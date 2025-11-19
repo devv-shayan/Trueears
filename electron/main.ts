@@ -2,6 +2,9 @@ import { app, BrowserWindow, globalShortcut, ipcMain, clipboard, screen } from '
 import path from 'path';
 import { keyboard, Key } from '@nut-tree-fork/nut-js';
 
+// Optimize keyboard speed
+keyboard.config.autoDelayMs = 0;
+
 let mainWindow: BrowserWindow | null = null;
 
 function createWindow() {
@@ -87,8 +90,8 @@ ipcMain.on('transcription-complete', async (event, text) => {
         console.log('Writing to clipboard...');
         clipboard.writeText(text);
 
-        // Just wait a moment before pasting
-        await new Promise(resolve => setTimeout(resolve, 300));
+        // Reduced delay for faster pasting (was 300ms)
+        await new Promise(resolve => setTimeout(resolve, 50));
 
         console.log('Sending Paste command...');
 
