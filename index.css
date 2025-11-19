@@ -1,0 +1,17 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Custom styles for the extension overlay */
+:host {
+  font-family: 'Inter', sans-serif;
+}
+
+html,
+body {
+  background-color: transparent;
+  margin: 0;
+  padding: 0;
+  overflow: hidden;
+  /* Prevent scrollbars */
+}

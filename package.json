@@ -1,0 +1,31 @@
+{
+  "name": "gemini-voice-dictation-demo",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "main": "dist-electron/main.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build && electron-builder",
+    "preview": "vite preview",
+    "electron:build": "tsc -p electron/tsconfig.json && node electron/create-package-json.js && vite build && electron-builder",
+    "electron:dev": "concurrently -k \"vite\" \"npm run electron:wait\"",
+    "electron:wait": "wait-on tcp:3000 && tsc -p electron/tsconfig.json && node electron/create-package-json.js && electron ."
+  },
+  "dependencies": {
+    "@google/genai": "^1.30.0",
+    "@nut-tree-fork/nut-js": "^4.2.6",
+    "react": "^19.2.0",
+    "react-dom": "^19.2.0"
+  },
+  "devDependencies": {
+    "@types/node": "^22.14.0",
+    "@vitejs/plugin-react": "^5.0.0",
+    "concurrently": "^9.2.1",
+    "electron": "^39.2.2",
+    "electron-builder": "^26.0.12",
+    "typescript": "~5.8.2",
+    "vite": "^6.2.0",
+    "wait-on": "^9.0.3"
+  }
+}
