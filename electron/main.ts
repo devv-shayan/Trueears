@@ -36,7 +36,7 @@ function createWindow() {
     if (process.env.VITE_DEV_SERVER_URL) {
         mainWindow.loadURL(process.env.VITE_DEV_SERVER_URL);
     } else {
-        mainWindow.loadURL('http://localhost:3000');
+        mainWindow.loadFile(path.join(__dirname, '../dist/index.html'));
     }
 
     // Start hidden - don't show until shortcut is pressed
