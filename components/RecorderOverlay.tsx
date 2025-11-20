@@ -9,6 +9,7 @@ declare global {
     electronAPI?: {
       onToggleRecording: (callback: () => void) => () => void;
       onOpenSettings: (callback: () => void) => () => void;
+      onShowWarning: (callback: (message: string) => void) => () => void;
       setIgnoreMouseEvents: (ignore: boolean, options?: { forward: boolean }) => void;
       sendTranscription: (text: string) => void;
     };
@@ -54,7 +55,9 @@ export const RecorderOverlay: React.FC = () => {
   // 'success': Text pasted
   // 'error': Something went wrong
   // 'settings': Configuration menu
-  const [status, setStatus] = useState<'idle' | 'setup' | 'recording' | 'processing' | 'success' | 'error' | 'settings'>('idle');
+  // 'warning': Warning message (e.g. no text box)
+  const [status, setStatus] = useState<'idle' | 'setup' | 'recording' | 'processing' | 'success' | 'error' | 'settings' | 'warning'>('idle');
+  const [warningMessage, setWarningMessage] = useState('');
   const [mediaStream, setMediaStream] = useState<MediaStream | null>(null);
 
   // Storage handling
@@ -312,6 +315,8 @@ export const RecorderOverlay: React.FC = () => {
     // Electron IPC Listener
     let removeIpcListener: (() => void) | undefined;
     let removeSettingsListener: (() => void) | undefined;
+    let removeWarningListener: (() => void) | undefined;
+
     if (window.electronAPI) {
       removeIpcListener = window.electronAPI.onToggleRecording(() => {
         handleToggle();
@@ -319,12 +324,23 @@ export const RecorderOverlay: React.FC = () => {
       removeSettingsListener = window.electronAPI.onOpenSettings(() => {
         toggleSettings();
       });
+      removeWarningListener = window.electronAPI.onShowWarning((msg) => {
+        setWarningMessage(msg);
+        setStatus('warning');
+        setIsVisible(true);
+        // Auto hide warning after 3s
+        setTimeout(() => {
+            setIsVisible(false);
+            setStatus('idle');
+        }, 3000);
+      });
     }
 
     return () => {
       window.removeEventListener('keydown', handleKeyDown);
       if (removeIpcListener) removeIpcListener();
       if (removeSettingsListener) removeSettingsListener();
+      if (removeWarningListener) removeWarningListener();
     };
   }, [handleToggle, isVisible, stopRecording, status, tempKeyInput]);
 
@@ -351,11 +367,22 @@ export const RecorderOverlay: React.FC = () => {
           overflow-hidden
           ${status === 'setup' ? 'w-80 h-12 rounded-xl' : ''}
           ${status === 'settings' ? 'w-80 h-48 rounded-xl' : ''}
+          ${status === 'warning' ? 'w-64 h-10 rounded-xl' : ''}
           ${status === 'recording' ? 'w-40 h-9' : ''}
           ${(status === 'idle' || status === 'processing' || status === 'success' || status === 'error') ? 'w-9 h-9' : ''}
         `}
       >
         <div className="relative w-full h-full flex items-center justify-center">
+
+          {/* WARNING MODE */}
+          {status === 'warning' && (
+            <div className="flex items-center justify-center w-full h-full px-3 gap-2 animate-fadeIn text-amber-400">
+               <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+               </svg>
+               <span className="text-xs font-medium whitespace-nowrap">{warningMessage}</span>
+            </div>
+          )}
 
           {/* SETTINGS MODE */}
           {status === 'settings' && (

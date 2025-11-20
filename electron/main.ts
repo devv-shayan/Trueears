@@ -1,6 +1,6 @@
 import { app, BrowserWindow, globalShortcut, ipcMain, clipboard, screen } from 'electron';
 import path from 'path';
-import { keyboard, Key } from '@nut-tree-fork/nut-js';
+import { keyboard, Key, getActiveWindow } from '@nut-tree-fork/nut-js';
 
 // Optimize keyboard speed
 keyboard.config.autoDelayMs = 0;
@@ -51,9 +51,27 @@ app.whenReady().then(() => {
     createWindow();
 
     // Register a 'CommandOrControl+Shift+K' shortcut listener.
-    const ret = globalShortcut.register('CommandOrControl+Shift+K', () => {
+    const ret = globalShortcut.register('CommandOrControl+Shift+K', async () => {
         console.log('CommandOrControl+Shift+K is pressed');
         if (mainWindow) {
+            try {
+                const win = await getActiveWindow();
+                const title = await win.title;
+                console.log('Active window:', title);
+                
+                // Heuristic: If title is "Program Manager" (Desktop) or empty, warn
+                // "Program Manager" is the classic Windows desktop title
+                if (!title || title === 'Program Manager' || title === 'Windows Default Lock Screen') {
+                     mainWindow.setAlwaysOnTop(true, 'screen-saver');
+                     mainWindow.webContents.send('show-warning', 'Please select a text box first');
+                     mainWindow.showInactive();
+                     return;
+                }
+            } catch (e) {
+                console.error('Error checking active window:', e);
+                // If check fails, proceed anyway (fail open)
+            }
+
             // Re-assert always on top status before showing
             mainWindow.setAlwaysOnTop(true, 'screen-saver');
             mainWindow.webContents.send('toggle-recording');

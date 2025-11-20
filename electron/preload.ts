@@ -15,6 +15,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
             ipcRenderer.removeListener('open-settings', subscription);
         };
     },
+    onShowWarning: (callback: (message: string) => void) => {
+        const subscription = (_event: any, message: string) => callback(message);
+        ipcRenderer.on('show-warning', subscription);
+        return () => {
+            ipcRenderer.removeListener('show-warning', subscription);
+        };
+    },
     setIgnoreMouseEvents: (ignore: boolean, options?: { forward: boolean }) => ipcRenderer.send('set-ignore-mouse-events', ignore, options),
     sendTranscription: (text: string) => ipcRenderer.send('transcription-complete', text),
 });
