@@ -1,7 +1,10 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { AudioVisualizer } from './AudioVisualizer';
-import { GroqService } from '../services/groqService';
-import { GeminiService } from '../services/geminiService';
+import { useSettings, GROQ_MODELS, GEMINI_MODELS } from '../hooks/useSettings';
+import { useDictation } from '../hooks/useDictation';
+import { Toast } from './Toast';
+import { CustomSelect } from './CustomSelect';
+import { useToast } from '../hooks/useToast';
 
 // Declare electronAPI for TypeScript visibility
 declare global {
@@ -16,255 +19,106 @@ declare global {
   }
 }
 
-// Synthesize a pleasant "ding" sound using Web Audio API
-const playSuccessSound = () => {
-  try {
-    const AudioContext = window.AudioContext || (window as any).webkitAudioContext;
-    if (!AudioContext) return;
-
-    const ctx = new AudioContext();
-    const oscillator = ctx.createOscillator();
-    const gainNode = ctx.createGain();
-
-    oscillator.connect(gainNode);
-    gainNode.connect(ctx.destination);
-
-    // A clean sine wave at 880Hz (High A) creates a bell-like tone
-    oscillator.type = 'sine';
-    oscillator.frequency.setValueAtTime(880, ctx.currentTime);
-
-    // ADSR Envelope: Fast attack, slow exponential decay
-    gainNode.gain.setValueAtTime(0, ctx.currentTime);
-    gainNode.gain.linearRampToValueAtTime(0.15, ctx.currentTime + 0.02); // Attack
-    gainNode.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 1.0); // Decay
-
-    oscillator.start();
-    oscillator.stop(ctx.currentTime + 1.0);
-  } catch (error) {
-    // Ignore audio errors
-  }
-};
-
 export const RecorderOverlay: React.FC = () => {
   const [isVisible, setIsVisible] = useState(false);
-  // States: 
-  // 'idle': Extension hidden or ready
-  // 'setup': Asking for API Key
-  // 'recording': Microphone active
-  // 'processing': Sending file to Groq
-  // 'success': Text pasted
-  // 'error': Something went wrong
-  // 'settings': Configuration menu
-  // 'warning': Warning message (e.g. no text box)
-  const [status, setStatus] = useState<'idle' | 'setup' | 'recording' | 'processing' | 'success' | 'error' | 'settings' | 'warning'>('idle');
+  const [uiMode, setUiMode] = useState<'none' | 'setup' | 'settings' | 'warning'>('none');
   const [warningMessage, setWarningMessage] = useState('');
-  const [mediaStream, setMediaStream] = useState<MediaStream | null>(null);
-
-  // Storage handling
-  const [apiKeys, setApiKeys] = useState({ groq: '', gemini: '' });
-  const [provider, setProvider] = useState<'groq' | 'gemini'>('groq');
-  const [isKeyLoaded, setIsKeyLoaded] = useState(false);
+  
+  const { apiKeys, models, provider, setProvider, isKeyLoaded, saveKey, saveModel } = useSettings();
+  const { status: recordingStatus, mediaStream, startDictation, stopDictation } = useDictation();
+  const { isVisible: isToastVisible, message: toastMessage, type: toastType, showToast, hideToast } = useToast();
 
   const [tempKeyInput, setTempKeyInput] = useState('');
+  const [tempModelInput, setTempModelInput] = useState('');
   const [showKey, setShowKey] = useState(false);
 
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const audioChunksRef = useRef<Blob[]>([]);
-  const isProcessingRef = useRef(false);
+  // Derived status for rendering
+  // If uiMode is active, it takes precedence over recording status (unless recording is active? usually mutually exclusive)
+  // Actually, if we are recording, we shouldn't be in settings/setup.
+  const status = uiMode !== 'none' ? uiMode : recordingStatus;
 
   // -- Effect: Manage Click-Through --
   useEffect(() => {
     if (window.electronAPI) {
-      // By default, ignore mouse events (allow click-through)
-      // forward: true allows us to still catch mouseenter/mouseleave
       window.electronAPI.setIgnoreMouseEvents(true, { forward: true });
     }
   }, []);
 
   const handleMouseEnter = () => {
-    // When mouse enters the interactive area, capture events
     window.electronAPI?.setIgnoreMouseEvents(false);
   };
 
   const handleMouseLeave = () => {
-    // When mouse leaves, go back to click-through
     window.electronAPI?.setIgnoreMouseEvents(true, { forward: true });
   };
 
-  // -- Load API Key (LocalStorage) --
+  // -- Effect: Auto-hide after success/error --
+  const prevRecordingStatus = useRef(recordingStatus);
   useEffect(() => {
-    const loadKeys = () => {
-      const groqKey = localStorage.getItem('GROQ_API_KEY') || '';
-      const geminiKey = localStorage.getItem('GEMINI_API_KEY') || '';
-      const savedProvider = localStorage.getItem('STT_PROVIDER') as 'groq' | 'gemini' | null;
-      
-      setApiKeys({ groq: groqKey, gemini: geminiKey });
-      if (savedProvider) setProvider(savedProvider);
-      
-      setIsKeyLoaded(true);
-    };
-    loadKeys();
-  }, []);
+      if ((prevRecordingStatus.current === 'success' || prevRecordingStatus.current === 'error') && recordingStatus === 'idle') {
+          setIsVisible(false);
+      }
+      prevRecordingStatus.current = recordingStatus;
+  }, [recordingStatus]);
+
 
   // -- Action: Save API Key --
   const handleSaveKey = () => {
     const key = tempKeyInput.trim();
+    const model = tempModelInput.trim();
     if (!key) return;
 
     if (provider === 'groq' && !key.startsWith('gsk_')) {
-      alert('Invalid Groq API Key. It usually starts with "gsk_"');
+      showToast('Invalid Groq API Key. It usually starts with "gsk_"', 'error');
       return;
     }
 
-    const newKeys = { ...apiKeys, [provider]: key };
-    setApiKeys(newKeys);
-    
-    if (provider === 'groq') {
-        localStorage.setItem('GROQ_API_KEY', key);
-    } else {
-        localStorage.setItem('GEMINI_API_KEY', key);
+    saveKey(key, provider);
+    if (model) {
+        saveModel(model, provider);
     }
-    localStorage.setItem('STT_PROVIDER', provider);
-
-    setStatus('idle');
-    // Only auto-start if we were in setup mode (first run), not settings mode
-    if (status === 'setup') {
-      setTimeout(() => startRecording(key), 100);
+    
+    // If we were in setup mode, try to start recording
+    if (uiMode === 'setup') {
+      setUiMode('none');
+      setTimeout(() => handleStartRecording(key), 100);
+    } else {
+      setUiMode('none');
     }
   };
 
   // -- Action: Toggle Settings --
   const toggleSettings = () => {
-    if (status === 'settings') {
-      setStatus('idle');
+    if (uiMode === 'settings') {
+      setUiMode('none');
     } else {
       setTempKeyInput(apiKeys[provider]); // Pre-fill current key
+      setTempModelInput(models[provider]); // Pre-fill current model
       setShowKey(false); // Reset visibility
-      setStatus('settings');
+      setUiMode('settings');
       setIsVisible(true);
     }
   };
 
   // -- Action: Start Recording --
-  const startRecording = async (manualKey?: string) => {
+  const handleStartRecording = async (manualKey?: string) => {
     const effectiveKey = manualKey || apiKeys[provider];
 
     // If no API key, force setup mode
     if (!effectiveKey) {
-      setStatus('setup');
+      setUiMode('setup');
       setIsVisible(true); // Ensure visible for setup
       return;
     }
 
-    try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      setMediaStream(stream);
-      setStatus('recording');
-      setIsVisible(true); // Ensure visible when recording starts
-      isProcessingRef.current = false;
-      audioChunksRef.current = [];
-
-      // Use MediaRecorder for standard webm capture
-      const recorder = new MediaRecorder(stream);
-      mediaRecorderRef.current = recorder;
-
-      recorder.ondataavailable = (event) => {
-        if (event.data.size > 0) {
-          audioChunksRef.current.push(event.data);
-        }
-      };
-
-      recorder.start();
-    } catch (err) {
-      console.error("Microphone error:", err);
-      setStatus('error');
-      setTimeout(() => setIsVisible(false), 2000);
-    }
+    await startDictation();
+    setIsVisible(true);
   };
 
-  // -- Action: Stop Recording & Transcribe --
-  const stopRecording = useCallback(async () => {
-    if (status !== 'recording') return;
-    if (isProcessingRef.current) return;
-    isProcessingRef.current = true;
-
-    const recorder = mediaRecorderRef.current;
-    const stream = mediaStream;
-
-    // Create a promise that resolves when the recorder actually stops and flushing data
-    const stopPromise = new Promise<Blob>((resolve) => {
-      if (!recorder) {
-        resolve(new Blob([]));
-        return;
-      }
-
-      recorder.onstop = () => {
-        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
-        resolve(audioBlob);
-      };
-      recorder.stop();
-    });
-
-    // Stop the visualizer/mic tracks immediately
-    if (stream) {
-      stream.getTracks().forEach(t => t.stop());
-    }
-    setMediaStream(null); // Unmount visualizer immediately
-
-    setStatus('processing'); // Transition to processing (will show pulsing dot)
-
-    try {
-      const audioBlob = await stopPromise;
-
-      if (audioBlob.size === 0) {
-        throw new Error("No audio captured");
-      }
-
-      // Send to selected provider
-      let text = '';
-      const currentKey = apiKeys[provider];
-
-      if (provider === 'gemini') {
-        text = await GeminiService.transcribe(audioBlob, currentKey);
-      } else {
-        text = await GroqService.transcribe(audioBlob, currentKey);
-      }
-
-      if (text) {
-        // Send to Electron Main Process
-        if (window.electronAPI) {
-          window.electronAPI.sendTranscription(text);
-        } else {
-          console.warn("Electron API not available, cannot type text:", text);
-          // Fallback for browser testing? Alert?
-          // alert("Transcription: " + text);
-        }
-
-        playSuccessSound(); // Ring the bell!
-        setStatus('success');
-        setTimeout(() => {
-          setIsVisible(false);
-          setStatus('idle');
-          isProcessingRef.current = false;
-        }, 1500);
-      } else {
-        // Empty response
-        setIsVisible(false);
-        setStatus('idle');
-        isProcessingRef.current = false;
-      }
-    } catch (error) {
-      console.error("Transcription failed", error);
-      // Show error details in alert for debugging
-      alert(`Transcription Error: ${error instanceof Error ? error.message : String(error)}`);
-      setStatus('error');
-      setTimeout(() => {
-        setIsVisible(false);
-        setStatus('idle');
-        isProcessingRef.current = false;
-      }, 2000);
-    }
-  }, [status, mediaStream, apiKeys, provider]);
+  // -- Action: Stop Recording --
+  const handleStopRecording = useCallback(async () => {
+    await stopDictation(provider, apiKeys[provider], models[provider], (msg) => showToast(msg, 'error'));
+  }, [stopDictation, provider, apiKeys, models, showToast]);
 
   const lastToggleTimeRef = useRef(0);
 
@@ -278,34 +132,29 @@ export const RecorderOverlay: React.FC = () => {
 
     if (!isKeyLoaded) return; // Wait for storage check
 
-    if (status === 'recording') {
-      stopRecording();
-    } else if (status === 'setup' || status === 'settings') {
+    if (recordingStatus === 'recording') {
+      handleStopRecording();
+    } else if (uiMode === 'setup' || uiMode === 'settings') {
       // Close if toggled while in setup or settings
       setIsVisible(false);
-      setStatus('idle');
+      setUiMode('none');
     } else {
       // Start Recording
-      startRecording();
+      handleStartRecording();
     }
-  }, [status, stopRecording, apiKeys, isKeyLoaded]);
+  }, [recordingStatus, uiMode, handleStopRecording, apiKeys, isKeyLoaded, provider]); // Added dependencies
 
   // -- Listeners: Electron IPC & Keyboard Shortcuts --
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      // DISABLED: We're using global shortcut (Ctrl+Shift+K) instead
-      // if ((e.ctrlKey || e.metaKey) && e.key === 'k') {
-      //   e.preventDefault();
-      //   handleToggle();
-      // }
       if (e.key === 'Escape' && isVisible) {
-        if (status === 'recording') stopRecording();
-        else if (status === 'settings') {
-            setStatus('idle');
+        if (recordingStatus === 'recording') handleStopRecording();
+        else if (uiMode === 'settings') {
+            setUiMode('none');
         }
         else setIsVisible(false);
       }
-      if ((status === 'setup' || status === 'settings') && e.key === 'Enter' && isVisible) {
+      if ((uiMode === 'setup' || uiMode === 'settings') && e.key === 'Enter' && isVisible) {
         handleSaveKey();
       }
     };
@@ -326,12 +175,12 @@ export const RecorderOverlay: React.FC = () => {
       });
       removeWarningListener = window.electronAPI.onShowWarning((msg) => {
         setWarningMessage(msg);
-        setStatus('warning');
+        setUiMode('warning');
         setIsVisible(true);
         // Auto hide warning after 3s
         setTimeout(() => {
             setIsVisible(false);
-            setStatus('idle');
+            setUiMode('none');
         }, 3000);
       });
     }
@@ -342,12 +191,19 @@ export const RecorderOverlay: React.FC = () => {
       if (removeSettingsListener) removeSettingsListener();
       if (removeWarningListener) removeWarningListener();
     };
-  }, [handleToggle, isVisible, stopRecording, status, tempKeyInput]);
+  }, [handleToggle, isVisible, handleStopRecording, recordingStatus, uiMode, tempKeyInput]);
 
   if (!isVisible) return null;
 
   return (
-    <div className="fixed z-[9999] bottom-10 left-1/2 -translate-x-1/2 pointer-events-none flex flex-col items-center justify-end">
+    <>
+      <Toast 
+        message={toastMessage} 
+        type={toastType} 
+        isVisible={isToastVisible} 
+        onClose={hideToast} 
+      />
+      <div className="fixed z-[9999] bottom-10 left-1/2 -translate-x-1/2 pointer-events-none flex flex-col items-center justify-end">
       {/* 
         Capsule Container
       */}
@@ -364,9 +220,9 @@ export const RecorderOverlay: React.FC = () => {
           rounded-full
           transition-all duration-300 cubic-bezier(0.2, 0.8, 0.2, 1)
           will-change-[width, height, transform]
-          overflow-hidden
+          ${status === 'settings' ? 'overflow-visible' : 'overflow-hidden'}
           ${status === 'setup' ? 'w-80 h-12 rounded-xl' : ''}
-          ${status === 'settings' ? 'w-80 h-48 rounded-xl' : ''}
+          ${status === 'settings' ? 'w-80 h-64 rounded-xl' : ''}
           ${status === 'warning' ? 'w-64 h-10 rounded-xl' : ''}
           ${status === 'recording' ? 'w-40 h-9' : ''}
           ${(status === 'idle' || status === 'processing' || status === 'success' || status === 'error') ? 'w-9 h-9' : ''}
@@ -389,7 +245,7 @@ export const RecorderOverlay: React.FC = () => {
             <div className="flex flex-col w-full h-full p-4 gap-3 animate-fadeIn text-white">
               <div className="flex items-center justify-between mb-1">
                 <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Settings</span>
-                <button onClick={() => setStatus('idle')} className="text-gray-500 hover:text-white">
+                <button onClick={() => setUiMode('none')} className="text-gray-500 hover:text-white">
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
                   </svg>
@@ -402,6 +258,7 @@ export const RecorderOverlay: React.FC = () => {
                   onClick={() => {
                     setProvider('groq');
                     setTempKeyInput(apiKeys.groq);
+                    setTempModelInput(models.groq);
                   }}
                   className={`flex-1 text-xs py-1.5 rounded-md transition-colors ${provider === 'groq' ? 'bg-white text-black font-bold' : 'text-gray-400 hover:text-white'}`}
                 >
@@ -411,6 +268,7 @@ export const RecorderOverlay: React.FC = () => {
                   onClick={() => {
                     setProvider('gemini');
                     setTempKeyInput(apiKeys.gemini);
+                    setTempModelInput(models.gemini);
                   }}
                   className={`flex-1 text-xs py-1.5 rounded-md transition-colors ${provider === 'gemini' ? 'bg-white text-black font-bold' : 'text-gray-400 hover:text-white'}`}
                 >
@@ -445,6 +303,16 @@ export const RecorderOverlay: React.FC = () => {
                     )}
                   </button>
                 </div>
+              </div>
+
+              {/* Model Input */}
+              <div className="flex flex-col gap-1">
+                <label className="text-[10px] text-gray-500 font-mono">MODEL</label>
+                <CustomSelect
+                  value={tempModelInput}
+                  options={provider === 'groq' ? GROQ_MODELS : GEMINI_MODELS}
+                  onChange={setTempModelInput}
+                />
               </div>
 
               <button
@@ -518,6 +386,7 @@ export const RecorderOverlay: React.FC = () => {
           </div>
         </div>
       </div>
-    </div>
+      </div>
+    </>
   );
 };

@@ -17,14 +17,14 @@ export default defineConfig(({ mode }) => {
     },
     resolve: {
       alias: {
-        '@': path.resolve(__dirname, '.'),
+        '@': path.resolve(__dirname, './src'),
       }
     },
     build: {
       rollupOptions: {
         input: {
           main: path.resolve(__dirname, 'index.html'),
-          style: path.resolve(__dirname, 'index.css')
+          style: path.resolve(__dirname, 'src/index.css')
         },
         output: {
           entryFileNames: '[name].js',

@@ -1,14 +1,14 @@
 export class GroqService {
   private static readonly API_URL = 'https://api.groq.com/openai/v1/audio/transcriptions';
 
-  static async transcribe(audioBlob: Blob, apiKey: string): Promise<string> {
+  static async transcribe(audioBlob: Blob, apiKey: string, model: string): Promise<string> {
     const formData = new FormData();
     // Groq accepts m4a, mp3, webm, mp4, mpga, wav, mpeg
     // Chrome MediaRecorder usually results in audio/webm
     formData.append('file', audioBlob, 'recording.webm');
-    formData.append('model', 'whisper-large-v3-turbo');
+    formData.append('model', model);
     // temperature 0 makes the output deterministic
-    formData.append('temperature', '0'); 
+    formData.append('temperature', '0');  
 
     const response = await fetch(this.API_URL, {
       method: 'POST',

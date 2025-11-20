@@ -1,7 +1,7 @@
 import { GoogleGenAI } from "@google/genai";
 
 export class GeminiService {
-  static async transcribe(audioBlob: Blob, apiKey: string): Promise<string> {
+  static async transcribe(audioBlob: Blob, apiKey: string, model: string): Promise<string> {
     try {
       // Convert Blob to Base64
       const reader = new FileReader();
@@ -20,12 +20,11 @@ export class GeminiService {
       // Initialize client with dynamic key
       const client = new GoogleGenAI({ apiKey });
       
-      const modelName = 'gemini-2.5-flash-native-audio-preview-09-2025';
-      console.log(`[GeminiService] Using model: ${modelName}`);
+      console.log(`[GeminiService] Using model: ${model}`);
 
       // Use Gemini 1.5 Flash for reliable audio support
       const response = await client.models.generateContent({
-        model: modelName,
+        model: model,
         contents: [
           {
             parts: [
