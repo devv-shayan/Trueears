@@ -27,5 +27,5 @@
     "noEmit": true
   },
   "include": ["src"],
-  "exclude": ["src-tauri", "node_modules", "dist"]
+  "exclude": ["../backend", "node_modules", "dist"]
 }

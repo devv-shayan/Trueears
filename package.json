@@ -7,12 +7,12 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "vite:dev": "vite",
-    "vite:build": "vite build",
-    "dev": "tauri dev",
-    "build": "tauri build",
-    "preview": "vite preview",
-    "tauri": "tauri"
+    "vite:dev": "cd frontend && vite",
+    "vite:build": "cd frontend && vite build",
+    "dev": "cd backend && tauri dev",
+    "build": "cd backend && tauri build",
+    "preview": "cd frontend && vite preview",
+    "tauri": "cd backend && tauri"
   },
   "dependencies": {
     "@google/genai": "^1.30.0",

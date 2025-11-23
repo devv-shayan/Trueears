@@ -55,7 +55,7 @@ winget install Rustlang.Rustup
 To run the application in development mode with hot-reloading:
 
 ```bash
-npm run tauri:dev
+npm run dev
 ```
 
 This will start the Vite dev server and launch the Tauri application with hot-reload capabilities.
@@ -65,11 +65,11 @@ This will start the Vite dev server and launch the Tauri application with hot-re
 To build the application for production:
 
 ```bash
-npm run tauri:build
+npm run build
 ```
 
-The output executable will be generated in the `src-tauri/target/release/bundle/` folder:
-- Windows: `src-tauri/target/release/bundle/nsis/Scribe_0.0.0_x64-setup.exe`
+The output executable will be generated in the `backend/target/release/bundle/` folder:
+- Windows: `backend/target/release/bundle/nsis/Scribe_0.0.0_x64-setup.exe`
 - The bundle size is approximately **15-20 MB** (vs ~150MB with Electron).
 
 ## Usage
@@ -95,7 +95,7 @@ The output executable will be generated in the `src-tauri/target/release/bundle/
 
 ```
 scribe/
-├── src-tauri/          # Tauri Rust backend
+├── backend/            # Tauri Rust backend
 │   ├── src/
 │   │   ├── main.rs     # Entry point (unused with lib.rs)
 │   │   ├── lib.rs      # Main Tauri application logic
@@ -104,16 +104,21 @@ scribe/
 │   │   └── window.rs       # Active window detection
 │   ├── Cargo.toml      # Rust dependencies
 │   └── tauri.conf.json # Tauri configuration
-├── src/                # React frontend
-│   ├── components/     # UI Components (Overlay, Settings, etc.)
-│   ├── hooks/          # Custom hooks (useAudioRecorder, useDictation)
-│   ├── services/       # AI Service integrations (Groq, Gemini)
-│   ├── utils/          # Audio processing, helpers, and Tauri API wrapper
-│   └── App.tsx         # Main application component
-├── dist/               # Built frontend assets (generated)
-├── index.html          # Entry HTML file
-├── package.json        # Project dependencies and scripts
-└── vite.config.ts      # Vite configuration
+├── frontend/           # React frontend
+│   ├── src/
+│   │   ├── components/     # UI Components (Overlay, Settings, etc.)
+│   │   ├── hooks/          # Custom hooks (useAudioRecorder, useDictation)
+│   │   ├── services/       # AI Service integrations (Groq, Gemini)
+│   │   ├── controllers/    # Business logic controllers
+│   │   ├── utils/          # Audio processing, helpers, and Tauri API wrapper
+│   │   └── App.tsx         # Main application component
+│   ├── dist/               # Built frontend assets (generated)
+│   ├── index.html          # Entry HTML file
+│   ├── vite.config.ts      # Vite configuration
+│   └── tsconfig.json       # TypeScript configuration
+├── build/              # Build assets (icons, etc.)
+├── package.json        # Root project dependencies and scripts
+└── README.md           # This file
 ```
 
 ## License

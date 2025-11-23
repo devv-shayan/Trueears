@@ -271,3 +271,40 @@ To add macOS support:
 
 **Migration Date**: November 23, 2025
 **Tauri Version**: 2.9.2
+
+---
+
+## Structure Refactoring (Post-Migration)
+
+The project structure was later refactored to use explicit `frontend/` and `backend/` folders instead of `src/` and `src-tauri/` for better clarity and maintainability:
+
+**Before:**
+```
+scribe/
+├── src/              # React frontend
+├── src-tauri/        # Rust backend
+├── index.html
+├── vite.config.ts
+└── tsconfig.json
+```
+
+**After:**
+```
+scribe/
+├── frontend/         # React frontend
+│   ├── src/
+│   ├── index.html
+│   ├── vite.config.ts
+│   └── tsconfig.json
+├── backend/          # Rust backend
+│   ├── src/
+│   ├── Cargo.toml
+│   └── tauri.conf.json
+└── package.json      # Root scripts
+```
+
+**Benefits:**
+- More self-documenting structure
+- Clearer separation of concerns
+- Better alignment with common project patterns
+- Easier onboarding for new developers
