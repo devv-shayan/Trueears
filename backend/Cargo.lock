@@ -3221,6 +3221,7 @@ dependencies = [
  "arboard",
  "enigo",
  "log",
+ "once_cell",
  "serde",
  "serde_json",
  "tauri",
@@ -3228,6 +3229,7 @@ dependencies = [
  "tauri-plugin-global-shortcut",
  "tauri-plugin-log",
  "tokio",
+ "walkdir",
  "windows 0.52.0",
 ]
 

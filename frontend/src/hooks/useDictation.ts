@@ -64,29 +64,36 @@ export const useDictation = () => {
       }
 
       console.log('[useDictation] Starting transcription...');
-      let text = await processTranscription(audioBlob, provider, apiKey, model);
-      console.log('[useDictation] Transcription result:', text);
+      let rawText = await processTranscription(audioBlob, provider, apiKey, model);
+      console.log('[useDictation] Transcription result:', rawText);
+
+      let finalText = rawText;
 
       // Apply LLM post-processing if enabled
-      if (llmEnabled && llmApiKey && text) {
+      if (llmEnabled && llmApiKey && rawText) {
         console.log('[useDictation] Applying LLM post-processing...');
         try {
-          text = await postProcessTranscription(
-            text,
+          const processed = await postProcessTranscription(
+            rawText,
             activeWindowInfo,
             llmApiKey,
             llmModel || 'openai/gpt-oss-120b',
             defaultPrompt || ''
           );
-          console.log('[useDictation] Post-processed text:', text);
+          if (processed && processed.trim().length > 0) {
+            finalText = processed;
+            console.log('[useDictation] Post-processed text:', finalText);
+          } else {
+            console.warn('[useDictation] Post-processed text was empty, falling back to raw transcription');
+          }
         } catch (error) {
           console.error('[useDictation] LLM post-processing failed:', error);
           // Continue with raw transcription
         }
       }
 
-      if (text) {
-        await finalizeDictation(text);
+      if (finalText) {
+        await finalizeDictation(finalText);
         setStatus('success');
         console.log('[useDictation] Status set to success, will reset to idle in 1.5s');
         setTimeout(() => {
