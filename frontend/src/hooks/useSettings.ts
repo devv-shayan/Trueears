@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { DEFAULT_LLM_MODEL, DEFAULT_SYSTEM_PROMPT, BASE_SYSTEM_PROMPT } from '../types/appProfile';
+import { tauriAPI } from '../utils/tauriApi';
 
 export type Provider = 'groq' | 'gemini';
 
@@ -35,34 +36,45 @@ export const useSettings = () => {
   const [llmModel, setLlmModel] = useState(DEFAULT_LLM_MODEL);
   const [defaultSystemPrompt, setDefaultSystemPrompt] = useState(DEFAULT_SYSTEM_PROMPT);
 
-  useEffect(() => {
-    const loadKeys = () => {
-      const groqKey = localStorage.getItem('GROQ_API_KEY') || '';
-      const geminiKey = localStorage.getItem('GEMINI_API_KEY') || '';
-      // Check for new key first, fallback to old key for backward compatibility
-      const savedProvider = (localStorage.getItem('SCRIBE_PROVIDER') || localStorage.getItem('STT_PROVIDER')) as Provider | null;
-      
-      const groqModel = localStorage.getItem('GROQ_MODEL') || DEFAULT_GROQ_MODEL;
-      const geminiModel = localStorage.getItem('GEMINI_MODEL') || DEFAULT_GEMINI_MODEL;
+  const loadKeys = () => {
+    const groqKey = localStorage.getItem('GROQ_API_KEY') || '';
+    const geminiKey = localStorage.getItem('GEMINI_API_KEY') || '';
+    // Check for new key first, fallback to old key for backward compatibility
+    const savedProvider = (localStorage.getItem('SCRIBE_PROVIDER') || localStorage.getItem('STT_PROVIDER')) as Provider | null;
+    
+    const groqModel = localStorage.getItem('GROQ_MODEL') || DEFAULT_GROQ_MODEL;
+    const geminiModel = localStorage.getItem('GEMINI_MODEL') || DEFAULT_GEMINI_MODEL;
 
-      setApiKeys({ groq: groqKey, gemini: geminiKey });
-      setModels({ groq: groqModel, gemini: geminiModel });
-      if (savedProvider) setProvider(savedProvider);
-      
-      // Load LLM settings
-      const savedLlmEnabled = localStorage.getItem('SCRIBE_LLM_ENABLED') === 'true';
-      const savedLlmApiKey = localStorage.getItem('SCRIBE_LLM_API_KEY') || groqKey; // Default to groq key
-      const savedLlmModel = localStorage.getItem('SCRIBE_LLM_MODEL') || DEFAULT_LLM_MODEL;
-      const savedSystemPrompt = localStorage.getItem('SCRIBE_DEFAULT_SYSTEM_PROMPT') || DEFAULT_SYSTEM_PROMPT;
-      
-      setLlmEnabled(savedLlmEnabled);
-      setLlmApiKey(savedLlmApiKey);
-      setLlmModel(savedLlmModel);
-      setDefaultSystemPrompt(savedSystemPrompt);
-      
-      setIsKeyLoaded(true);
-    };
+    setApiKeys({ groq: groqKey, gemini: geminiKey });
+    setModels({ groq: groqModel, gemini: geminiModel });
+    if (savedProvider) setProvider(savedProvider);
+    
+    // Load LLM settings
+    const savedLlmEnabled = localStorage.getItem('SCRIBE_LLM_ENABLED') === 'true';
+    const savedLlmApiKey = localStorage.getItem('SCRIBE_LLM_API_KEY') || groqKey; // Default to groq key
+    const savedLlmModel = localStorage.getItem('SCRIBE_LLM_MODEL') || DEFAULT_LLM_MODEL;
+    const savedSystemPrompt = localStorage.getItem('SCRIBE_DEFAULT_SYSTEM_PROMPT') || DEFAULT_SYSTEM_PROMPT;
+    
+    setLlmEnabled(savedLlmEnabled);
+    setLlmApiKey(savedLlmApiKey);
+    setLlmModel(savedLlmModel);
+    setDefaultSystemPrompt(savedSystemPrompt);
+    
+    setIsKeyLoaded(true);
+  };
+
+  useEffect(() => {
     loadKeys();
+
+    // Listen for Tauri event (cross-window)
+    let unlistenTauri: (() => void) | undefined;
+    tauriAPI.onSettingsChanged(loadKeys).then(unlisten => {
+        unlistenTauri = unlisten;
+    });
+
+    return () => {
+      if (unlistenTauri) unlistenTauri();
+    };
   }, []);
 
   const saveKey = (key: string, providerToSave: Provider) => {
@@ -77,6 +89,8 @@ export const useSettings = () => {
     localStorage.setItem('SCRIBE_PROVIDER', providerToSave);
     // Remove old key if it exists (migration)
     localStorage.removeItem('STT_PROVIDER');
+    
+    tauriAPI.emitSettingsChanged();
   };
 
   const saveModel = (model: string, providerToSave: Provider) => {
@@ -88,6 +102,8 @@ export const useSettings = () => {
     } else {
         localStorage.setItem('GEMINI_MODEL', model);
     }
+    
+    tauriAPI.emitSettingsChanged();
   };
 
   const setProviderAndSave = (newProvider: Provider) => {
@@ -95,26 +111,32 @@ export const useSettings = () => {
       localStorage.setItem('SCRIBE_PROVIDER', newProvider);
       // Remove old key if it exists (migration)
       localStorage.removeItem('STT_PROVIDER');
+      
+      tauriAPI.emitSettingsChanged();
   }
 
   const saveLlmEnabled = (enabled: boolean) => {
     setLlmEnabled(enabled);
     localStorage.setItem('SCRIBE_LLM_ENABLED', enabled.toString());
+    tauriAPI.emitSettingsChanged();
   };
 
   const saveLlmApiKey = (key: string) => {
     setLlmApiKey(key);
     localStorage.setItem('SCRIBE_LLM_API_KEY', key);
+    tauriAPI.emitSettingsChanged();
   };
 
   const saveLlmModel = (model: string) => {
     setLlmModel(model);
     localStorage.setItem('SCRIBE_LLM_MODEL', model);
+    tauriAPI.emitSettingsChanged();
   };
 
   const saveDefaultSystemPrompt = (prompt: string) => {
     setDefaultSystemPrompt(prompt);
     localStorage.setItem('SCRIBE_DEFAULT_SYSTEM_PROMPT', prompt);
+    tauriAPI.emitSettingsChanged();
   };
 
   return {

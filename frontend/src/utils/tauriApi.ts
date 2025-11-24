@@ -1,4 +1,4 @@
-import { listen } from '@tauri-apps/api/event';
+import { listen, emit } from '@tauri-apps/api/event';
 import { invoke } from '@tauri-apps/api/core';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 import { ActiveWindowInfo } from '../types/appProfile';
@@ -133,6 +133,29 @@ export const tauriAPI = {
             console.log('[tauriAPI] Settings window opened');
         } catch (error) {
             console.error('[tauriAPI] Failed to open settings window:', error);
+        }
+    },
+
+    emitSettingsChanged: async (): Promise<void> => {
+        try {
+            if (!isTauri()) return;
+            await emit('settings-changed');
+        } catch (error) {
+            console.error('[tauriAPI] Failed to emit settings-changed:', error);
+        }
+    },
+
+    onSettingsChanged: async (callback: () => void) => {
+        try {
+            if (!isTauri()) return () => {};
+            const unlisten = await listen('settings-changed', () => {
+                console.log('[tauriAPI] settings-changed event received');
+                callback();
+            });
+            return unlisten;
+        } catch (error) {
+            console.error('[tauriAPI] Failed to register settings-changed listener:', error);
+            return () => {};
         }
     }
 };

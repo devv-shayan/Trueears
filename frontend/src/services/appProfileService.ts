@@ -1,4 +1,5 @@
 import { AppProfile, ActiveWindowInfo, DEFAULT_APP_PROFILES, DEFAULT_SYSTEM_PROMPT, BASE_SYSTEM_PROMPT } from '../types/appProfile';
+import { tauriAPI } from '../utils/tauriApi';
 
 const STORAGE_KEY = 'SCRIBE_APP_PROFILES';
 
@@ -19,6 +20,7 @@ export class AppProfileService {
   static saveProfiles(profiles: AppProfile[]): void {
     try {
       localStorage.setItem(STORAGE_KEY, JSON.stringify(profiles));
+      tauriAPI.emitSettingsChanged();
     } catch (error) {
       console.error('Failed to save app profiles:', error);
     }
