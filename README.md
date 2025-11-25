@@ -82,7 +82,7 @@ npm run build
 ```
 
 The output executable will be generated in the `backend/target/release/bundle/` folder:
-- Windows: `backend/target/release/bundle/nsis/Scribe_0.0.0_x64-setup.exe`
+- Windows: `backend/target/release/bundle/nsis/Scribe_0.1.0_x64-setup.exe`
 - The bundle size is approximately **15-20 MB** (vs ~150MB with Electron).
 
 ## Usage

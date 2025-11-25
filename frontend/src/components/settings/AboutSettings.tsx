@@ -8,7 +8,7 @@ export const AboutSettings: React.FC = () => {
       <div className="space-y-6 text-gray-300">
         <div>
           <p className="text-sm text-gray-500 mb-1">Version</p>
-          <p className="text-lg font-mono">0.0.0</p>
+          <p className="text-lg font-mono">0.1.0</p>
         </div>
 
         <div>
