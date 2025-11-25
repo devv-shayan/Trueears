@@ -39,6 +39,13 @@ export const DEFAULT_APP_PROFILES: AppProfile[] = [
     enabled: true,
   },
   {
+    id: 'cursor',
+    appName: 'Cursor.exe',
+    displayName: 'Cursor',
+    systemPrompt: 'Format as code comments or technical documentation. Use technical terminology and preserve code-related keywords. When a file name is mentioned (e.g., "user service dot js", "app dot py", "config dot json"), format it in proper camelCase or kebab-case naming convention and prepend an @ sign to the file name (e.g., @userService.js, @app.py, @config.json). Convert spoken file extensions correctly (.js, .py, .ts, .tsx, .json, .css, etc.).',
+    enabled: true,
+  },
+  {
     id: 'slack',
     appName: 'slack.exe',
     displayName: 'Slack',

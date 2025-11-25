@@ -8,6 +8,7 @@ A minimalist, context-aware AI voice dictation application built with Tauri, Rea
 - 🧠 **Context-Aware Formatting**: Automatically detects your active window (Slack, VS Code, Outlook, etc.) and applies app-specific formatting
 - 🤖 **LLM Post-Processing**: Optional GPT-powered text formatting that formats (not responds to) your transcription
 - 📋 **Auto-Paste**: Automatically pastes transcribed text into the currently active application
+- 🎯 **Cursor File Mentions**: Detects @filename mentions in dictation and inserts clickable file references in Cursor editor
 - 🪟 **Minimalist Overlay**: Non-intrusive floating UI with recording status
 - ⚙️ **Full Settings Panel**: Press `Ctrl+Shift+L` to toggle a resizable settings window
 - 🎯 **App Profiles**: Pre-configured profiles for VS Code, Slack, Discord, Outlook, Chrome, Notion, OneNote, and Word
@@ -96,6 +97,10 @@ The output executable will be generated in the `backend/target/release/bundle/` 
    - Transcribe your audio via Groq Whisper
    - Apply LLM formatting (if enabled) based on the matched app profile
    - Automatically paste the result
+
+### File Mentions in Cursor
+
+When using Cursor editor, you can mention files in your dictation by saying "@filename" (e.g., "@app.tsx" or "@userService.js"). Scribe will automatically insert a clickable file reference that Cursor recognizes, allowing you to quickly navigate to files while dictating.
 
 ### Keyboard Shortcuts
 
@@ -200,6 +205,7 @@ Scribe comes with pre-configured profiles for popular applications:
 | App | Executable | Formatting Style |
 |-----|-----------|------------------|
 | VS Code | `Code.exe` | Technical documentation with @ file prefixes |
+| Cursor | `Cursor.exe` | Technical documentation with @ file mentions |
 | Slack | `slack.exe` | Casual chat messages |
 | Discord | `Discord.exe` | Casual chat messages |
 | Outlook | `OUTLOOK.EXE` | Professional email format |
