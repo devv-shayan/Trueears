@@ -61,8 +61,14 @@ export class AppProfileService {
       return titleMatches[0];
     }
 
-    // Otherwise, take the first candidate (backwards compatibility)
-    return candidates[0];
+    // If no title matches, check if any candidate has no title pattern (app-only match)
+    const appOnlyMatches = candidates.filter(profile => !profile.windowTitlePattern);
+    if (appOnlyMatches.length > 0) {
+      return appOnlyMatches[0];
+    }
+
+    // No match found - will use default system prompt
+    return null;
   }
 
   static getSystemPrompt(windowInfo: ActiveWindowInfo | null, defaultPrompt?: string): string {
