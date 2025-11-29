@@ -11,7 +11,7 @@ export const AudioVisualizer: React.FC<AudioVisualizerProps> = ({ stream, isReco
   const animationRef = useRef<number>(0);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const dataArrayRef = useRef<Uint8Array | null>(null);
-  const visualStateRef = useRef<number[]>([0, 0, 0, 0]);
+  const visualStateRef = useRef<number[]>(new Array(12).fill(0));
 
   useEffect(() => {
     if (!stream || !isRecording || !canvasRef.current) return;
@@ -39,7 +39,7 @@ export const AudioVisualizer: React.FC<AudioVisualizerProps> = ({ stream, isReco
     if (!ctx) return;
 
     const dpr = window.devicePixelRatio || 1;
-    const logicalWidth = 80;
+    const logicalWidth = 104;
     const logicalHeight = 24;
     
     canvas.width = logicalWidth * dpr;
@@ -57,9 +57,9 @@ export const AudioVisualizer: React.FC<AudioVisualizerProps> = ({ stream, isReco
 
       ctx.clearRect(0, 0, logicalWidth, logicalHeight);
 
-      const bars = 4;
-      const gap = 6; 
-      const barWidth = 6;
+      const bars = 12;
+      const gap = 4; 
+      const barWidth = 5;
       const totalBarGroupWidth = (bars * barWidth) + ((bars - 1) * gap);
       const startX = (logicalWidth - totalBarGroupWidth) / 2;
       
@@ -78,12 +78,20 @@ export const AudioVisualizer: React.FC<AudioVisualizerProps> = ({ stream, isReco
           return sum / count;
       };
 
-      // Define frequency ranges roughly optimized for human voice
+      // Define frequency ranges roughly optimized for human voice (12 bands)
       const ranges = [
-          { s: 1, e: 4 },   // ~85-340Hz   (Fundamentals / Bass)
-          { s: 4, e: 12 },  // ~340-1000Hz (Vowels / Low Mid)
-          { s: 12, e: 28 }, // ~1000-2500Hz (Mid / Presence)
-          { s: 28, e: 60 }  // ~2500Hz+    (Highs / Sibilance)
+          { s: 1, e: 3 },   // Sub-bass
+          { s: 3, e: 5 },   // Bass
+          { s: 5, e: 8 },   // Low-mid
+          { s: 8, e: 12 },  // Mid-bass
+          { s: 12, e: 18 }, // Low-mids
+          { s: 18, e: 26 }, // Mids
+          { s: 26, e: 36 }, // High-mids
+          { s: 36, e: 50 }, // Presence
+          { s: 50, e: 70 }, // Brilliance
+          { s: 70, e: 95 }, // Highs
+          { s: 95, e: 125 },// Air
+          { s: 125, e: 160 }// Top
       ];
 
       for (let i = 0; i < bars; i++) {

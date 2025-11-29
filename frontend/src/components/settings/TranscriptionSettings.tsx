@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { CustomSelect } from '../CustomSelect';
 import { GROQ_MODELS } from '../../hooks/useSettings';
+import { open } from '@tauri-apps/plugin-shell';
 
 interface TranscriptionSettingsProps {
   apiKeys: Record<string, string>;
@@ -92,7 +93,7 @@ export const TranscriptionSettings: React.FC<TranscriptionSettingsProps> = ({
             />
             <button
               onClick={() => setShowKey(!showKey)}
-              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white transition-colors"
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white transition-colors cursor-pointer"
             >
               {showKey ? (
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -108,9 +109,9 @@ export const TranscriptionSettings: React.FC<TranscriptionSettingsProps> = ({
           </div>
           <p className="text-xs text-gray-600">
             Get your API key from{' '}
-            <a href="https://console.groq.com/keys" target="_blank" rel="noopener noreferrer" className="text-blue-400 hover:underline">
+            <button onClick={() => open('https://console.groq.com/keys')} className="text-blue-400 hover:underline cursor-pointer">
               console.groq.com/keys
-            </a>
+            </button>
           </p>
         </div>
 
@@ -126,7 +127,7 @@ export const TranscriptionSettings: React.FC<TranscriptionSettingsProps> = ({
         {/* Save Button */}
         <button
           onClick={handleSave}
-          className={`w-full py-3 rounded-lg font-medium transition-colors ${
+          className={`w-full py-3 rounded-lg font-medium transition-colors cursor-pointer ${
             saved
               ? 'bg-emerald-500 text-white'
               : 'bg-white text-black hover:bg-gray-200'

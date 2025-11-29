@@ -79,7 +79,7 @@ export const StepPermissions: React.FC<StepProps> & { Visual: React.FC } = ({ on
             {!granted && (
               <button 
                 onClick={handleGrant}
-                className="text-[11px] font-bold bg-white text-black px-3 py-1.5 rounded hover:bg-emerald-100 transition-colors"
+                className="text-[11px] font-bold bg-white text-black px-3 py-1.5 rounded hover:bg-emerald-100 transition-colors cursor-pointer"
               >
                 {verifying ? 'Verifying...' : 'Grant Access'}
               </button>

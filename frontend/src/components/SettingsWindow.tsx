@@ -89,7 +89,7 @@ export const SettingsWindow: React.FC = () => {
         <nav className="flex-1 p-3 space-y-1">
           <button
             onClick={() => setActiveTab('transcription')}
-            className={`w-full text-left px-3 py-2.5 rounded-lg text-sm transition-colors flex items-center gap-3 ${
+            className={`w-full text-left px-3 py-2.5 rounded-lg text-sm transition-colors flex items-center gap-3 cursor-pointer ${
               activeTab === 'transcription'
                 ? 'bg-white/10 text-white font-medium'
                 : 'text-gray-400 hover:bg-white/5 hover:text-white'
@@ -103,7 +103,7 @@ export const SettingsWindow: React.FC = () => {
 
           <button
             onClick={() => setActiveTab('llm')}
-            className={`w-full text-left px-3 py-2.5 rounded-lg text-sm transition-colors flex items-center gap-3 ${
+            className={`w-full text-left px-3 py-2.5 rounded-lg text-sm transition-colors flex items-center gap-3 cursor-pointer ${
               activeTab === 'llm'
                 ? 'bg-white/10 text-white font-medium'
                 : 'text-gray-400 hover:bg-white/5 hover:text-white'
@@ -117,7 +117,7 @@ export const SettingsWindow: React.FC = () => {
 
           <button
             onClick={() => setActiveTab('profiles')}
-            className={`w-full text-left px-3 py-2.5 rounded-lg text-sm transition-colors flex items-center gap-3 ${
+            className={`w-full text-left px-3 py-2.5 rounded-lg text-sm transition-colors flex items-center gap-3 cursor-pointer ${
               activeTab === 'profiles'
                 ? 'bg-white/10 text-white font-medium'
                 : 'text-gray-400 hover:bg-white/5 hover:text-white'
@@ -131,7 +131,7 @@ export const SettingsWindow: React.FC = () => {
 
           <button
             onClick={() => setActiveTab('about')}
-            className={`w-full text-left px-3 py-2.5 rounded-lg text-sm transition-colors flex items-center gap-3 ${
+            className={`w-full text-left px-3 py-2.5 rounded-lg text-sm transition-colors flex items-center gap-3 cursor-pointer ${
               activeTab === 'about'
                 ? 'bg-white/10 text-white font-medium'
                 : 'text-gray-400 hover:bg-white/5 hover:text-white'

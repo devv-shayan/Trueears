@@ -1,6 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { CustomSelect } from './CustomSelect';
 import { GROQ_MODELS, GEMINI_MODELS } from '../hooks/useSettings';
+import { open } from '@tauri-apps/plugin-shell';
 
 interface SettingsViewProps {
   currentProvider: 'groq' | 'gemini';
@@ -47,7 +48,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     <div className="flex flex-col w-full h-full p-4 gap-3 animate-fadeIn text-white">
       <div className="flex items-center justify-between mb-1">
         <span className="text-xs font-bold text-gray-400 uppercase tracking-wider">Settings</span>
-        <button onClick={onClose} className="text-gray-500 hover:text-white">
+        <button onClick={onClose} className="text-gray-500 hover:text-white cursor-pointer">
           <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
           </svg>
@@ -58,13 +59,13 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
       <div className="flex gap-2 bg-white/5 p-1 rounded-lg">
         <button 
           onClick={() => setProvider('groq')}
-          className={`flex-1 text-xs py-1.5 rounded-md transition-colors ${provider === 'groq' ? 'bg-white text-black font-bold' : 'text-gray-400 hover:text-white'}`}
+          className={`flex-1 text-xs py-1.5 rounded-md transition-colors cursor-pointer ${provider === 'groq' ? 'bg-white text-black font-bold' : 'text-gray-400 hover:text-white'}`}
         >
           Groq
         </button>
         <button 
           onClick={() => setProvider('gemini')}
-          className={`flex-1 text-xs py-1.5 rounded-md transition-colors ${provider === 'gemini' ? 'bg-white text-black font-bold' : 'text-gray-400 hover:text-white'}`}
+          className={`flex-1 text-xs py-1.5 rounded-md transition-colors cursor-pointer ${provider === 'gemini' ? 'bg-white text-black font-bold' : 'text-gray-400 hover:text-white'}`}
         >
           Gemini
         </button>
@@ -72,7 +73,17 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
       {/* API Key Input */}
       <div className="flex flex-col gap-1">
-        <label className="text-[10px] text-gray-500 font-mono">API KEY</label>
+        <div className="flex justify-between items-center">
+          <label className="text-[10px] text-gray-500 font-mono">API KEY</label>
+          {provider === 'groq' && (
+            <button 
+              onClick={() => open('https://console.groq.com/keys')}
+              className="text-[9px] text-gray-500 hover:text-white underline decoration-gray-600 hover:decoration-white transition-colors cursor-pointer"
+            >
+              Get Key ↗
+            </button>
+          )}
+        </div>
         <div className="relative">
           <input
             type={showKey ? "text" : "password"}
@@ -83,7 +94,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           />
           <button
             onClick={() => setShowKey(!showKey)}
-            className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white transition-colors"
+            className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-500 hover:text-white transition-colors cursor-pointer"
           >
             {showKey ? (
               <svg className="w-3 h-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -111,7 +122,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
 
       <button
         onClick={handleSave}
-        className="mt-auto w-full bg-white text-black text-xs font-bold py-1.5 rounded hover:bg-gray-200 transition-colors"
+        className="mt-auto w-full bg-white text-black text-xs font-bold py-1.5 rounded hover:bg-gray-200 transition-colors cursor-pointer"
       >
         Save Changes
       </button>

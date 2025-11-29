@@ -30,7 +30,7 @@ const TutorialVisual: React.FC = () => {
           <button
             key={label}
             onClick={() => handleTabClick(i)}
-            className={`text-[11px] font-bold uppercase tracking-wider pb-2 border-b-2 transition-all duration-300
+            className={`text-[11px] font-bold uppercase tracking-wider pb-2 border-b-2 transition-all duration-300 cursor-pointer
               ${activeTab === i ? 'text-emerald-500 border-emerald-500' : 'text-gray-600 border-transparent hover:text-gray-400'}`}
           >
             {label}
@@ -194,13 +194,13 @@ export const StepTutorial: React.FC<StepProps> & { Visual: React.FC } = ({ onNex
         <button
           onClick={handlePrevStep}
           disabled={activeTab === 0}
-          className="px-6 py-4 rounded-xl border border-white/10 text-xs font-bold text-gray-400 hover:text-white hover:border-white/30 disabled:opacity-30 disabled:cursor-not-allowed transition-all"
+          className="px-6 py-4 rounded-xl border border-white/10 text-xs font-bold text-gray-400 hover:text-white hover:border-white/30 disabled:opacity-30 disabled:cursor-not-allowed transition-all cursor-pointer"
         >
           Prev
         </button>
         <button
           onClick={handleNextStep}
-          className="flex-1 py-4 rounded-xl font-['Syne'] font-bold text-xs uppercase tracking-wider bg-white text-black hover:bg-emerald-100 shadow-lg transition-all"
+          className="flex-1 py-4 rounded-xl font-['Syne'] font-bold text-xs uppercase tracking-wider bg-white text-black hover:bg-emerald-100 shadow-lg transition-all cursor-pointer"
         >
           {activeTab === 2 ? 'Finish Setup' : 'Next Tip'}
         </button>

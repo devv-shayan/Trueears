@@ -74,14 +74,14 @@ async fn open_settings_window(app: tauri::AppHandle) -> Result<(), String> {
         tauri::WebviewUrl::App("/".into())
     )
     .title("Scribe Settings")
-    .inner_size(1024.0, 768.0)
+    .inner_size(1200.0, 800.0)
     .min_inner_size(800.0, 600.0)
-    .maximized(false)
+    .maximized(true)
     .resizable(true)
     .center()
     .visible(false)
     .decorations(true)
-    .always_on_top(true)
+    .always_on_top(false)
     .skip_taskbar(false)
     .transparent(false)
     .build()
@@ -106,6 +106,7 @@ async fn open_settings_window(app: tauri::AppHandle) -> Result<(), String> {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
+        .plugin(tauri_plugin_shell::init())
         .plugin(tauri_plugin_global_shortcut::Builder::new().build())
         .plugin(tauri_plugin_store::Builder::new().build())
         .setup(|app| {

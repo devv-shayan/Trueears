@@ -90,7 +90,7 @@ export const LLMSettings: React.FC<LLMSettingsProps> = ({
         {/* Save Button */}
         <button
           onClick={handleSave}
-          className={`w-full py-3 rounded-lg font-medium transition-colors ${
+          className={`w-full py-3 rounded-lg font-medium transition-colors cursor-pointer ${
             saved
               ? 'bg-emerald-500 text-white'
               : 'bg-white text-black hover:bg-gray-200'

@@ -107,7 +107,7 @@ export const StepSuccess: React.FC<StepProps> = ({ onNext }) => {
         <div className="mt-auto pt-8">
           <button
             onClick={onNext}
-            className="w-full py-4 rounded-xl font-['Syne'] font-bold text-xs uppercase tracking-wider bg-white text-black hover:bg-emerald-100 shadow-lg transition-all duration-300 hover:-translate-y-1"
+            className="w-full py-4 rounded-xl font-['Syne'] font-bold text-xs uppercase tracking-wider bg-white text-black hover:bg-emerald-100 shadow-lg transition-all duration-300 hover:-translate-y-1 cursor-pointer"
           >
             Enter Scribe
           </button>

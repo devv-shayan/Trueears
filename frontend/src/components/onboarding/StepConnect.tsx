@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSettings } from '../../hooks/useSettings';
+import { open } from '@tauri-apps/plugin-shell';
 
 interface StepProps {
   onNext: () => void;
@@ -95,14 +96,12 @@ export const StepConnect: React.FC<StepProps> & { Visual: React.FC } = ({ onNext
         </button>
         
         <div className="text-center mt-4">
-          <a 
-            href="https://console.groq.com/keys" 
-            target="_blank" 
-            rel="noopener noreferrer"
-            className="text-[10px] text-gray-600 hover:text-white transition-colors border-b border-transparent hover:border-gray-500"
+          <button 
+            onClick={() => open('https://console.groq.com/keys')}
+            className="text-[10px] text-gray-600 hover:text-white transition-colors border-b border-transparent hover:border-gray-500 cursor-pointer"
           >
             Generate key via Console ↗
-          </a>
+          </button>
         </div>
       </div>
     </div>

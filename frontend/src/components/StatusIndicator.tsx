@@ -1,4 +1,5 @@
 import React from 'react';
+import { Spinner } from '@/components/ui/ios-spinner';
 
 interface StatusIndicatorProps {
   status: 'idle' | 'recording' | 'processing' | 'success' | 'error' | 'setup' | 'settings' | 'warning' | 'none';
@@ -26,7 +27,13 @@ export const StatusIndicator: React.FC<StatusIndicatorProps> = ({ status, onSett
         // Idle or Processing (Subtle pulse if processing)
         // We render this even if hidden to allow transition, but only if not success/error
         <div className="relative group flex items-center justify-center w-full h-full">
-          <div className={`w-1.5 h-1.5 rounded-full ${status === 'processing' ? 'bg-white/60 animate-pulse' : 'bg-white/20'}`} />
+          <div className="relative flex items-center justify-center w-full h-full">
+            {status === 'processing' ? (
+              <Spinner size="sm" className="text-white/90" />
+            ) : (
+              <div className="w-1.5 h-1.5 rounded-full bg-white/20" />
+            )}
+          </div>
           
           {/* Settings Trigger (Only visible on hover of the dot in idle) */}
           {status === 'idle' && (

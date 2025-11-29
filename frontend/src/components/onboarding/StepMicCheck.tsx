@@ -49,7 +49,7 @@ const MicCheckVisual: React.FC = () => {
         <div className="flex gap-3">
           <button 
             onClick={() => setIsMicModalOpen(true)}
-            className="flex-1 py-2 bg-black text-white hover:bg-black/90 rounded text-xs font-bold transition-colors"
+            className="flex-1 py-2 bg-black text-white hover:bg-black/90 rounded text-xs font-bold transition-colors cursor-pointer"
           >
             Change Mic
           </button>
@@ -64,7 +64,7 @@ const MicCheckVisual: React.FC = () => {
               <h3 className="font-bold text-white text-sm">Select Input</h3>
               <button 
                 onClick={() => setIsMicModalOpen(false)}
-                className="text-gray-500 hover:text-white"
+                className="text-gray-500 hover:text-white cursor-pointer"
               >✕</button>
             </div>
             <div className="space-y-1 max-h-60 overflow-y-auto">
@@ -109,7 +109,7 @@ export const StepMicCheck: React.FC<StepProps> & { Visual: React.FC } = ({ onNex
       <div className="mt-auto pt-8">
         <button
           onClick={onNext}
-          className="w-full py-4 rounded-xl font-['Syne'] font-bold text-xs uppercase tracking-wider bg-white text-black hover:bg-emerald-100 shadow-lg transition-all duration-300"
+          className="w-full py-4 rounded-xl font-['Syne'] font-bold text-xs uppercase tracking-wider bg-white text-black hover:bg-emerald-100 shadow-lg transition-all duration-300 cursor-pointer"
         >
           Looks Good
         </button>

@@ -89,7 +89,7 @@ export const AppProfilesSettings: React.FC = () => {
             <button
               key={profile.id}
               onClick={() => handleSelectProfile(profile)}
-              className={`w-full text-left px-3 py-2.5 rounded-lg text-sm transition-colors mb-1 flex items-center gap-2 ${
+              className={`w-full text-left px-3 py-2.5 rounded-lg text-sm transition-colors mb-1 flex items-center gap-2 cursor-pointer ${
                 selectedProfileId === profile.id
                   ? 'bg-white/20 text-white font-medium'
                   : 'text-gray-400 hover:bg-white/10 hover:text-white'
@@ -104,13 +104,13 @@ export const AppProfilesSettings: React.FC = () => {
         <div className="p-3 border-t border-white/10 space-y-2">
           <button
             onClick={handleAddNew}
-            className="w-full bg-white/5 border border-white/10 text-xs text-gray-300 py-2 rounded-lg hover:bg-white/10 transition-colors"
+            className="w-full bg-white/5 border border-white/10 text-xs text-gray-300 py-2 rounded-lg hover:bg-white/10 transition-colors cursor-pointer"
           >
             + Add New Profile
           </button>
           <button
             onClick={handleReset}
-            className="w-full text-xs text-gray-500 py-1.5 rounded-lg hover:text-gray-300 transition-colors"
+            className="w-full text-xs text-gray-500 py-1.5 rounded-lg hover:text-gray-300 transition-colors cursor-pointer"
           >
             Reset to Defaults
           </button>
@@ -191,7 +191,7 @@ export const AppProfilesSettings: React.FC = () => {
               <div className="flex gap-3 pt-4">
                 <button
                   onClick={handleSave}
-                  className={`flex-1 py-3 rounded-lg font-medium transition-colors ${
+                  className={`flex-1 py-3 rounded-lg font-medium transition-colors cursor-pointer ${
                     saved
                       ? 'bg-emerald-500 text-white'
                       : 'bg-white text-black hover:bg-gray-200'
@@ -202,7 +202,7 @@ export const AppProfilesSettings: React.FC = () => {
                 {selectedProfileId && profiles.find(p => p.id === selectedProfileId) && (
                   <button
                     onClick={handleDelete}
-                    className="px-6 bg-rose-500/20 text-rose-400 text-sm font-medium py-3 rounded-lg hover:bg-rose-500/30 transition-colors border border-rose-500/30"
+                    className="px-6 bg-rose-500/20 text-rose-400 text-sm font-medium py-3 rounded-lg hover:bg-rose-500/30 transition-colors border border-rose-500/30 cursor-pointer"
                   >
                     Delete
                   </button>
