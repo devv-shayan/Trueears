@@ -15,7 +15,6 @@
     "tauri": "cd backend && tauri"
   },
   "dependencies": {
-    "@google/genai": "^1.30.0",
     "@tailwindcss/postcss": "^4.1.17",
     "@tauri-apps/api": "^2.9.0",
     "@tauri-apps/plugin-global-shortcut": "^2.2.0",

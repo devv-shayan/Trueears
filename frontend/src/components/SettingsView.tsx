@@ -1,36 +1,33 @@
 import React, { useState, useEffect } from 'react';
 import { CustomSelect } from './CustomSelect';
-import { GROQ_MODELS, GEMINI_MODELS } from '../hooks/useSettings';
+import { GROQ_MODELS } from '../hooks/useSettings';
 import { open } from '@tauri-apps/plugin-shell';
 
 interface SettingsViewProps {
-  currentProvider: 'groq' | 'gemini';
-  apiKeys: Record<string, string>;
-  models: Record<string, string>;
-  onSave: (provider: 'groq' | 'gemini', key: string, model: string) => void;
+  apiKey: string;
+  model: string;
+  onSave: (key: string, model: string) => void;
   onClose: () => void;
 }
 
 export const SettingsView: React.FC<SettingsViewProps> = ({
-  currentProvider,
-  apiKeys,
-  models,
+  apiKey,
+  model,
   onSave,
   onClose
 }) => {
-  const [provider, setProvider] = useState<'groq' | 'gemini'>(currentProvider);
-  const [keyInput, setKeyInput] = useState('');
-  const [modelInput, setModelInput] = useState('');
+  const [keyInput, setKeyInput] = useState(apiKey || '');
+  const [modelInput, setModelInput] = useState(model || GROQ_MODELS[0]);
   const [showKey, setShowKey] = useState(false);
 
-  // Initialize inputs when provider changes or on mount
+  // Initialize inputs when props change
   useEffect(() => {
-    setKeyInput(apiKeys[provider] || '');
-    setModelInput(models[provider] || '');
-  }, [provider, apiKeys, models]);
+    setKeyInput(apiKey || '');
+    setModelInput(model || GROQ_MODELS[0]);
+  }, [apiKey, model]);
 
   const handleSave = () => {
-    onSave(provider, keyInput, modelInput);
+    onSave(keyInput, modelInput);
   };
 
   // Handle Enter key to save
@@ -42,7 +39,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
     };
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [provider, keyInput, modelInput, onSave]); // Dependencies for handleSave
+  }, [keyInput, modelInput, onSave]);
 
   return (
     <div className="flex flex-col w-full h-full p-4 gap-3 animate-fadeIn text-white">
@@ -54,40 +51,22 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
           </svg>
         </button>
       </div>
-      
-      {/* Provider Selection */}
-      <div className="flex gap-2 bg-white/5 p-1 rounded-lg">
-        <button 
-          onClick={() => setProvider('groq')}
-          className={`flex-1 text-xs py-1.5 rounded-md transition-colors cursor-pointer ${provider === 'groq' ? 'bg-white text-black font-bold' : 'text-gray-400 hover:text-white'}`}
-        >
-          Groq
-        </button>
-        <button 
-          onClick={() => setProvider('gemini')}
-          className={`flex-1 text-xs py-1.5 rounded-md transition-colors cursor-pointer ${provider === 'gemini' ? 'bg-white text-black font-bold' : 'text-gray-400 hover:text-white'}`}
-        >
-          Gemini
-        </button>
-      </div>
 
       {/* API Key Input */}
       <div className="flex flex-col gap-1">
         <div className="flex justify-between items-center">
           <label className="text-[10px] text-gray-500 font-mono">API KEY</label>
-          {provider === 'groq' && (
-            <button 
-              onClick={() => open('https://console.groq.com/keys')}
-              className="text-[9px] text-gray-500 hover:text-white underline decoration-gray-600 hover:decoration-white transition-colors cursor-pointer"
-            >
-              Get Key ↗
-            </button>
-          )}
+          <button 
+            onClick={() => open('https://console.groq.com/keys')}
+            className="text-[9px] text-gray-500 hover:text-white underline decoration-gray-600 hover:decoration-white transition-colors cursor-pointer"
+          >
+            Get Key ↗
+          </button>
         </div>
         <div className="relative">
           <input
             type={showKey ? "text" : "password"}
-            placeholder={provider === 'groq' ? "gsk_..." : "Gemini API Key"}
+            placeholder="gsk_..."
             className="w-full bg-white/5 border border-white/10 rounded px-2 py-1.5 pr-8 text-xs text-white placeholder-gray-600 focus:outline-none focus:border-white/30 transition-colors font-mono"
             value={keyInput}
             onChange={(e) => setKeyInput(e.target.value)}
@@ -115,7 +94,7 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         <label className="text-[10px] text-gray-500 font-mono">MODEL</label>
         <CustomSelect
           value={modelInput}
-          options={provider === 'groq' ? GROQ_MODELS : GEMINI_MODELS}
+          options={GROQ_MODELS}
           onChange={setModelInput}
         />
       </div>

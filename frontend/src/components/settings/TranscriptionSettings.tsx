@@ -4,24 +4,24 @@ import { GROQ_MODELS } from '../../hooks/useSettings';
 import { open } from '@tauri-apps/plugin-shell';
 
 interface TranscriptionSettingsProps {
-  apiKeys: Record<string, string>;
-  models: Record<string, string>;
-  saveKey: (key: string, provider: 'groq' | 'gemini') => void;
-  saveModel: (model: string, provider: 'groq' | 'gemini') => void;
+  apiKey: string;
+  model: string;
+  saveKey: (key: string) => void;
+  saveModel: (model: string) => void;
   onboardingComplete: boolean;
   markOnboardingComplete: () => void;
 }
 
 export const TranscriptionSettings: React.FC<TranscriptionSettingsProps> = ({
-  apiKeys,
-  models,
+  apiKey: initialApiKey,
+  model: initialModel,
   saveKey,
   saveModel,
   onboardingComplete,
   markOnboardingComplete,
 }) => {
-  const [apiKey, setApiKey] = useState(apiKeys.groq || '');
-  const [model, setModel] = useState(models.groq || GROQ_MODELS[0]);
+  const [apiKey, setApiKey] = useState(initialApiKey || '');
+  const [model, setModel] = useState(initialModel || GROQ_MODELS[0]);
   const [showKey, setShowKey] = useState(false);
   const [saved, setSaved] = useState(false);
   const [showBanner, setShowBanner] = useState(!onboardingComplete);
@@ -34,8 +34,8 @@ export const TranscriptionSettings: React.FC<TranscriptionSettingsProps> = ({
   }, [onboardingComplete]);
 
   const handleSave = () => {
-    saveKey(apiKey, 'groq');
-    saveModel(model, 'groq');
+    saveKey(apiKey);
+    saveModel(model);
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
     // Mark onboarding complete when user saves a valid key

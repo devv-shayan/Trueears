@@ -148,7 +148,16 @@ export const SettingsWindow: React.FC = () => {
 
       {/* Right Content Area */}
       <div className="flex-1 overflow-y-auto">
-        {activeTab === 'transcription' && <TranscriptionSettings {...settings} />}
+        {activeTab === 'transcription' && (
+          <TranscriptionSettings 
+            apiKey={settings.apiKey}
+            model={settings.model}
+            saveKey={settings.saveApiKey}
+            saveModel={settings.saveGroqModel}
+            onboardingComplete={settings.onboardingComplete}
+            markOnboardingComplete={settings.markOnboardingComplete}
+          />
+        )}
         {activeTab === 'llm' && <LLMSettings {...settings} />}
         {activeTab === 'profiles' && <AppProfilesSettings />}
         {activeTab === 'about' && <AboutSettings />}

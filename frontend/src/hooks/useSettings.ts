@@ -2,21 +2,12 @@ import { useState, useEffect } from 'react';
 import { DEFAULT_LLM_MODEL, DEFAULT_SYSTEM_PROMPT, BASE_SYSTEM_PROMPT } from '../types/appProfile';
 import { tauriAPI } from '../utils/tauriApi';
 
-export type Provider = 'groq' | 'gemini';
-
 export const DEFAULT_GROQ_MODEL = 'whisper-large-v3-turbo';
-export const DEFAULT_GEMINI_MODEL = 'gemini-2.5-flash-native-audio-preview-09-2025';
 
 export const GROQ_MODELS = [
   'whisper-large-v3-turbo',
   'whisper-large-v3',
   'distil-whisper-large-v3-en'
-];
-
-export const GEMINI_MODELS = [
-  'gemini-2.5-flash-native-audio-preview-09-2025',
-  'gemini-1.5-flash',
-  'gemini-1.5-pro'
 ];
 
 export const LLM_MODELS = [
@@ -25,9 +16,8 @@ export const LLM_MODELS = [
 ];
 
 export const useSettings = () => {
-  const [apiKeys, setApiKeys] = useState({ groq: '', gemini: '' });
-  const [models, setModels] = useState({ groq: DEFAULT_GROQ_MODEL, gemini: DEFAULT_GEMINI_MODEL });
-  const [provider, setProvider] = useState<Provider>('groq');
+  const [apiKey, setApiKey] = useState('');
+  const [model, setModel] = useState(DEFAULT_GROQ_MODEL);
   const [isKeyLoaded, setIsKeyLoaded] = useState(false);
   
   // LLM post-processing settings
@@ -42,10 +32,7 @@ export const useSettings = () => {
   const loadKeys = async () => {
     // Try to load from store first
     let groqKey = await tauriAPI.getStoreValue('GROQ_API_KEY');
-    let geminiKey = await tauriAPI.getStoreValue('GEMINI_API_KEY');
-    let savedProvider = await tauriAPI.getStoreValue('SCRIBE_PROVIDER') || await tauriAPI.getStoreValue('STT_PROVIDER');
     let groqModel = await tauriAPI.getStoreValue('GROQ_MODEL');
-    let geminiModel = await tauriAPI.getStoreValue('GEMINI_MODEL');
     let savedLlmEnabled = await tauriAPI.getStoreValue('SCRIBE_LLM_ENABLED');
     let savedLlmApiKey = await tauriAPI.getStoreValue('SCRIBE_LLM_API_KEY');
     let savedLlmModel = await tauriAPI.getStoreValue('SCRIBE_LLM_MODEL');
@@ -53,7 +40,7 @@ export const useSettings = () => {
     let savedOnboardingComplete = await tauriAPI.getStoreValue('SCRIBE_ONBOARDING_COMPLETE');
 
     console.log('[useSettings] loadKeys - store values:', {
-      groqKey, geminiKey, savedProvider, groqModel, geminiModel,
+      groqKey, groqModel,
       savedLlmEnabled, savedLlmApiKey, savedLlmModel, savedSystemPrompt
     });
 
@@ -62,21 +49,9 @@ export const useSettings = () => {
       groqKey = localStorage.getItem('GROQ_API_KEY') || '';
       await tauriAPI.setStoreValue('GROQ_API_KEY', groqKey);
     }
-    if (geminiKey === null) {
-      geminiKey = localStorage.getItem('GEMINI_API_KEY') || '';
-      await tauriAPI.setStoreValue('GEMINI_API_KEY', geminiKey);
-    }
-    if (savedProvider === null) {
-      savedProvider = localStorage.getItem('SCRIBE_PROVIDER') || localStorage.getItem('STT_PROVIDER') || null;
-      if (savedProvider) await tauriAPI.setStoreValue('SCRIBE_PROVIDER', savedProvider);
-    }
     if (groqModel === null) {
       groqModel = localStorage.getItem('GROQ_MODEL') || DEFAULT_GROQ_MODEL;
       await tauriAPI.setStoreValue('GROQ_MODEL', groqModel);
-    }
-    if (geminiModel === null) {
-      geminiModel = localStorage.getItem('GEMINI_MODEL') || DEFAULT_GEMINI_MODEL;
-      await tauriAPI.setStoreValue('GEMINI_MODEL', geminiModel);
     }
     if (savedLlmEnabled === null) {
       savedLlmEnabled = localStorage.getItem('SCRIBE_LLM_ENABLED') || 'false';
@@ -95,9 +70,8 @@ export const useSettings = () => {
       await tauriAPI.setStoreValue('SCRIBE_DEFAULT_SYSTEM_PROMPT', savedSystemPrompt);
     }
 
-    setApiKeys({ groq: groqKey || '', gemini: geminiKey || '' });
-    setModels({ groq: groqModel || DEFAULT_GROQ_MODEL, gemini: geminiModel || DEFAULT_GEMINI_MODEL });
-    if (savedProvider) setProvider(savedProvider as Provider);
+    setApiKey(groqKey || '');
+    setModel(groqModel || DEFAULT_GROQ_MODEL);
     
     setLlmEnabled(savedLlmEnabled === 'true');
     setLlmApiKey(savedLlmApiKey || groqKey || '');
@@ -129,43 +103,17 @@ export const useSettings = () => {
     init();
   }, []);
 
-  const saveKey = async (key: string, providerToSave: Provider) => {
-    const newKeys = { ...apiKeys, [providerToSave]: key };
-    setApiKeys(newKeys);
-    
-    if (providerToSave === 'groq') {
-        await tauriAPI.setStoreValue('GROQ_API_KEY', key);
-    } else {
-        await tauriAPI.setStoreValue('GEMINI_API_KEY', key);
-    }
-    await tauriAPI.setStoreValue('SCRIBE_PROVIDER', providerToSave);
-    // Remove old key if it exists (migration)
-    await tauriAPI.setStoreValue('STT_PROVIDER', '');
-    
+  const saveApiKey = async (key: string) => {
+    setApiKey(key);
+    await tauriAPI.setStoreValue('GROQ_API_KEY', key);
     tauriAPI.emitSettingsChanged();
   };
 
-  const saveModel = async (model: string, providerToSave: Provider) => {
-    const newModels = { ...models, [providerToSave]: model };
-    setModels(newModels);
-
-    if (providerToSave === 'groq') {
-        await tauriAPI.setStoreValue('GROQ_MODEL', model);
-    } else {
-        await tauriAPI.setStoreValue('GEMINI_MODEL', model);
-    }
-    
+  const saveGroqModel = async (newModel: string) => {
+    setModel(newModel);
+    await tauriAPI.setStoreValue('GROQ_MODEL', newModel);
     tauriAPI.emitSettingsChanged();
   };
-
-  const setProviderAndSave = async (newProvider: Provider) => {
-      setProvider(newProvider);
-      await tauriAPI.setStoreValue('SCRIBE_PROVIDER', newProvider);
-      // Remove old key if it exists (migration)
-      await tauriAPI.setStoreValue('STT_PROVIDER', '');
-      
-      tauriAPI.emitSettingsChanged();
-  }
 
   const saveLlmEnabled = async (enabled: boolean) => {
     console.log('[useSettings] saveLlmEnabled called with:', enabled);
@@ -198,13 +146,11 @@ export const useSettings = () => {
   };
 
   return {
-    apiKeys,
-    models,
-    provider,
-    setProvider: setProviderAndSave,
+    apiKey,
+    model,
     isKeyLoaded,
-    saveKey,
-    saveModel,
+    saveApiKey,
+    saveGroqModel,
     // LLM settings
     llmEnabled,
     llmApiKey,

@@ -38,14 +38,14 @@ const ConnectVisual: React.FC = () => {
 
 export const StepConnect: React.FC<StepProps> & { Visual: React.FC } = ({ onNext }) => {
   const [inputKey, setInputKey] = useState('');
-  const { saveKey, saveLlmEnabled, saveLlmApiKey } = useSettings();
+  const { saveApiKey, saveLlmEnabled, saveLlmApiKey } = useSettings();
   
   const isValid = inputKey.trim().startsWith('gsk_') && inputKey.length > 10;
 
   const handleSave = () => {
     if (isValid) {
       const key = inputKey.trim();
-      saveKey(key, 'groq');
+      saveApiKey(key);
       
       // Also enable LLM by default for context awareness features
       saveLlmEnabled(true);

@@ -1,18 +1,12 @@
 import { GroqService } from '../services/groqService';
-import { GeminiService } from '../services/geminiService';
 import { GroqChatService } from '../services/groqChatService';
 import { AppProfileService } from '../services/appProfileService';
 import { playSuccessSound } from '../utils/soundUtils';
-import { Provider } from '../hooks/useSettings';
 import { tauriAPI } from '../utils/tauriApi';
 import { ActiveWindowInfo } from '../types/appProfile';
 
-export const processTranscription = async (audioBlob: Blob, provider: Provider, apiKey: string, model: string): Promise<string> => {
-  if (provider === 'gemini') {
-    return await GeminiService.transcribe(audioBlob, apiKey, model);
-  } else {
-    return await GroqService.transcribe(audioBlob, apiKey, model);
-  }
+export const processTranscription = async (audioBlob: Blob, apiKey: string, model: string): Promise<string> => {
+  return await GroqService.transcribe(audioBlob, apiKey, model);
 };
 
 export const postProcessTranscription = async (

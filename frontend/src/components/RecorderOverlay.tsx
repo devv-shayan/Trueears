@@ -16,13 +16,10 @@ export const RecorderOverlay: React.FC = () => {
   const [warningMessage, setWarningMessage] = useState('');
   
   const { 
-    apiKeys, 
-    models, 
-    provider, 
-    setProvider, 
+    apiKey, 
+    model, 
     isKeyLoaded, 
-    saveKey, 
-    saveModel,
+    saveApiKey, 
     llmEnabled,
     llmApiKey,
     llmModel,
@@ -100,12 +97,12 @@ export const RecorderOverlay: React.FC = () => {
       const trimmedKey = key.trim();
       if (!trimmedKey) return;
 
-      if (provider === 'groq' && !trimmedKey.startsWith('gsk_')) {
+      if (!trimmedKey.startsWith('gsk_')) {
         showToast('Invalid Groq API Key. It usually starts with "gsk_"', 'error');
         return;
       }
 
-      saveKey(trimmedKey, provider);
+      saveApiKey(trimmedKey);
       
       // If we were in setup mode, try to start recording
       setUiMode('none');
@@ -123,7 +120,7 @@ export const RecorderOverlay: React.FC = () => {
   // -- Action: Start Recording --
   const handleStartRecording = async (manualKey?: string, windowInfo?: ActiveWindowInfo | null) => {
     console.log('[RecorderOverlay] handleStartRecording called with window info:', windowInfo);
-    const effectiveKey = manualKey || apiKeys[provider];
+    const effectiveKey = manualKey || apiKey;
     console.log('[RecorderOverlay] Effective key exists:', !!effectiveKey);
 
     // If no API key, force setup mode
@@ -145,16 +142,15 @@ export const RecorderOverlay: React.FC = () => {
   // -- Action: Stop Recording --
   const handleStopRecording = useCallback(async () => {
     await stopDictation(
-      provider, 
-      apiKeys[provider], 
-      models[provider], 
+      apiKey, 
+      model, 
       (msg) => showToast(msg, 'error'),
       llmEnabled,
-      llmApiKey || apiKeys.groq, // Fallback to groq key if no LLM key
+      llmApiKey || apiKey,
       llmModel,
       defaultSystemPrompt
     );
-  }, [stopDictation, provider, apiKeys, models, showToast, llmEnabled, llmApiKey, llmModel, defaultSystemPrompt]);
+  }, [stopDictation, apiKey, model, showToast, llmEnabled, llmApiKey, llmModel, defaultSystemPrompt]);
 
   const lastToggleTimeRef = useRef(0);
   const pendingWindowInfoRef = useRef<ActiveWindowInfo | null>(null);
@@ -224,7 +220,7 @@ export const RecorderOverlay: React.FC = () => {
       handleStartRecording(undefined, pendingWindowInfoRef.current);
       pendingWindowInfoRef.current = null;
     }
-  }, [recordingStatus, uiMode, handleStopRecording, apiKeys, isKeyLoaded, provider, showToast]); // Added dependencies
+  }, [recordingStatus, uiMode, handleStopRecording, apiKey, isKeyLoaded, showToast]);
 
   // Refs to hold latest callbacks for Tauri event listeners
   const handleToggleRef = useRef(handleToggle);
@@ -356,7 +352,6 @@ export const RecorderOverlay: React.FC = () => {
           {/* SETUP MODE: Input Field */}
           {status === 'setup' && (
             <SetupView 
-                provider={provider}
                 onSave={handleSaveSetup}
             />
           )}

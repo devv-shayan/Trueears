@@ -1,11 +1,10 @@
 import React, { useState } from 'react';
 
 interface SetupViewProps {
-  provider: 'groq' | 'gemini';
   onSave: (key: string) => void;
 }
 
-export const SetupView: React.FC<SetupViewProps> = ({ provider, onSave }) => {
+export const SetupView: React.FC<SetupViewProps> = ({ onSave }) => {
   const [keyInput, setKeyInput] = useState('');
 
   return (
@@ -13,7 +12,7 @@ export const SetupView: React.FC<SetupViewProps> = ({ provider, onSave }) => {
       <input
         autoFocus
         type="password"
-        placeholder={provider === 'groq' ? "Enter Groq API Key (gsk_...)" : "Enter Gemini API Key"}
+        placeholder="Enter Groq API Key (gsk_...)"
         className="flex-1 bg-transparent border-none outline-none text-white text-xs placeholder-gray-500 font-mono"
         value={keyInput}
         onChange={(e) => setKeyInput(e.target.value)}
