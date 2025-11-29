@@ -54,9 +54,27 @@ pub fn register_shortcuts(app: &AppHandle) -> Result<(), Box<dyn std::error::Err
                     }
 
                     log::info!("Emitting toggle-recording event with window info");
-                    let _ = window.emit("toggle-recording", window_info);
+                    
+                    // Debug: log window state before show
+                    if let Ok(visible) = window.is_visible() {
+                        log::info!("Window visible before: {}", visible);
+                    }
+                    if let Ok(size) = window.outer_size() {
+                        log::info!("Window size: {}x{}", size.width, size.height);
+                    }
+                    
+                    // Ensure window is visible
+                    let _ = window.unminimize();
                     let _ = window.show();
                     let _ = window.set_always_on_top(true);
+                    
+                    // Emit event after window is shown
+                    let _ = window.emit("toggle-recording", window_info);
+                    
+                    // Debug: log window state after show
+                    if let Ok(visible) = window.is_visible() {
+                        log::info!("Window visible after: {}", visible);
+                    }
                 }
             }
         }

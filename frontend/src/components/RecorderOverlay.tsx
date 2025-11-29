@@ -10,10 +10,14 @@ import { WarningView } from './WarningView';
 import { tauriAPI } from '../utils/tauriApi';
 import { ActiveWindowInfo } from '../types/appProfile';
 
+// Module-level flag to prevent duplicate listeners (survives React Strict Mode)
+let listenersInitialized = false;
+
 export const RecorderOverlay: React.FC = () => {
   const [isVisible, setIsVisible] = useState(false);
   const [uiMode, setUiMode] = useState<'none' | 'setup' | 'warning'>('none');
   const [warningMessage, setWarningMessage] = useState('');
+  const [windowPadding, setWindowPadding] = useState(250); // Default padding, will be calculated
   
   const { 
     apiKey, 
@@ -33,15 +37,32 @@ export const RecorderOverlay: React.FC = () => {
   // Derived status for rendering
   const status = uiMode !== 'none' ? uiMode : recordingStatus;
 
-  // -- Effect: Manage Click-Through and Debug Tauri --
+  // -- Effect: Calculate window padding from window position --
+  useEffect(() => {
+    const calculatePadding = async () => {
+      try {
+        const { getCurrentWindow } = await import('@tauri-apps/api/window');
+        const window = getCurrentWindow();
+        const position = await window.outerPosition();
+        // Padding is the absolute value of the negative position
+        const padding = Math.abs(Math.min(position.x, position.y));
+        console.log('[RecorderOverlay] Window position:', position, 'Calculated padding:', padding);
+        if (padding > 0) {
+          setWindowPadding(padding);
+        }
+      } catch (e) {
+        console.error('[RecorderOverlay] Failed to get window position:', e);
+      }
+    };
+    calculatePadding();
+  }, []);
+
+  // -- Effect: Debug Tauri availability --
   useEffect(() => {
     console.log('[RecorderOverlay] Checking Tauri availability...');
     console.log('[RecorderOverlay] window.__TAURI__ exists:', !!(window as any).__TAURI__);
     console.log('[RecorderOverlay] window.__TAURI_INTERNALS__ exists:', !!(window as any).__TAURI_INTERNALS__);
     console.log('[RecorderOverlay] window keys:', Object.keys(window).filter(k => k.includes('TAURI')));
-    
-    // Don't ignore mouse events by default - let UI state determine it
-    // tauriAPI.setIgnoreMouseEvents(true);
   }, []);
 
   const handleMouseEnter = () => {
@@ -267,9 +288,18 @@ export const RecorderOverlay: React.FC = () => {
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [isVisible, handleStopRecording, recordingStatus]);
 
-  // -- Tauri Event Listeners (setup ONCE) --
+  // -- Tauri Event Listeners (setup ONCE using module-level flag) --
   useEffect(() => {
+    // Skip if already initialized (prevents React Strict Mode double-init)
+    if (listenersInitialized) {
+      console.log('[RecorderOverlay] Listeners already initialized, skipping');
+      return;
+    }
+    listenersInitialized = true;
     console.log('[RecorderOverlay] Setting up Tauri event listeners...');
+    
+    let unlistenToggle: (() => void) | null = null;
+    let unlistenWarning: (() => void) | null = null;
     
     const setupListeners = async () => {
       console.log('[RecorderOverlay] Starting listener setup...');
@@ -277,13 +307,12 @@ export const RecorderOverlay: React.FC = () => {
       // Wait a bit for Tauri context to be available after HMR
       await new Promise(resolve => setTimeout(resolve, 100));
       
-      const unlistenToggle = await tauriAPI.onToggleRecording((windowInfo) => {
+      unlistenToggle = await tauriAPI.onToggleRecording((windowInfo) => {
         console.log('[RecorderOverlay] Toggle recording callback fired with window info:', windowInfo);
-        // Use the ref to get latest version of callback
         handleToggleRef.current(windowInfo);
       });
       
-      const unlistenWarning = await tauriAPI.onShowWarning((msg) => {
+      unlistenWarning = await tauriAPI.onShowWarning((msg) => {
         console.log('[RecorderOverlay] Warning callback fired:', msg);
         setWarningMessage(msg);
         setUiMode('warning');
@@ -295,24 +324,17 @@ export const RecorderOverlay: React.FC = () => {
       });
 
       console.log('[RecorderOverlay] All listeners set up successfully!');
-      return { unlistenToggle, unlistenWarning };
     };
 
-    let unlisteners: Awaited<ReturnType<typeof setupListeners>> | null = null;
-    
-    setupListeners().then((result) => {
-      unlisteners = result;
-      console.log('[RecorderOverlay] Listeners ready!');
-    }).catch(error => {
+    setupListeners().catch(error => {
       console.error('[RecorderOverlay] Failed to setup listeners:', error);
+      listenersInitialized = false; // Allow retry
     });
 
+    // Don't clean up on React re-renders - listeners should persist
     return () => {
-      console.log('[RecorderOverlay] Cleaning up Tauri listeners...');
-      if (unlisteners) {
-        unlisteners.unlistenToggle();
-        unlisteners.unlistenWarning();
-      }
+      // Only log, don't actually cleanup (we want listeners to persist)
+      console.log('[RecorderOverlay] Effect cleanup (listeners persist)');
     };
   }, []); // Empty deps - setup ONCE on mount
 
@@ -326,7 +348,10 @@ export const RecorderOverlay: React.FC = () => {
         isVisible={isToastVisible} 
         onClose={hideToast} 
       />
-      <div className="fixed z-9999 bottom-32 left-1/2 -translate-x-1/2 pointer-events-none flex flex-col items-center justify-end">
+      <div 
+        className="fixed z-[9999] left-1/2 -translate-x-1/2 pointer-events-none flex flex-col items-center justify-end"
+        style={{ bottom: windowPadding + 48 }}
+      >
       {/* 
         Capsule Container
       */}
@@ -341,8 +366,7 @@ export const RecorderOverlay: React.FC = () => {
           shadow-[0_8px_32px_rgba(0,0,0,0.5)]
           backdrop-blur-xl
           rounded-full
-          transition-all duration-300 cubic-bezier(0.2, 0.8, 0.2, 1)
-          will-change-[width, height, transform]
+          transition-all duration-300
           ${status === 'setup' ? 'w-80 h-12 rounded-xl' : ''}
           ${status === 'warning' ? 'w-64 h-10 rounded-xl' : ''}
           ${status === 'recording' ? 'w-40 h-9' : ''}
