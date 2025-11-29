@@ -48,6 +48,11 @@ pub async fn paste_text(text: &str) -> Result<(), String> {
         }
     }
 
+    // Clear clipboard after all segments are pasted
+    thread::sleep(Duration::from_millis(100));
+    clipboard.clear().map_err(|e| format!("Failed to clear clipboard: {}", e))?;
+    log::info!("Clipboard cleared");
+
     Ok(())
 }
 
@@ -66,6 +71,12 @@ fn paste_full_text(text: &str) -> Result<(), String> {
         Enigo::new(&Settings::default()).map_err(|e| format!("Failed to create Enigo: {}", e))?;
     send_paste(&mut enigo)?;
     log::info!("Paste command sent");
+
+    // Clear clipboard after paste to avoid leaking transcription
+    thread::sleep(Duration::from_millis(100));
+    clipboard.clear().map_err(|e| format!("Failed to clear clipboard: {}", e))?;
+    log::info!("Clipboard cleared");
+    
     Ok(())
 }
 
