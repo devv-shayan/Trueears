@@ -12,11 +12,21 @@ const MicCheckVisual: React.FC = () => {
   const [selectedDeviceId, setSelectedDeviceId] = useState<string>('default');
 
   useEffect(() => {
+    let currentStream: MediaStream | null = null;
+    
     const startMic = async () => {
       try {
+        // Stop previous stream before starting new one
+        stream?.getTracks().forEach(t => t.stop());
+        
+        const audioConstraints = selectedDeviceId === 'default' 
+          ? true 
+          : { deviceId: { exact: selectedDeviceId } };
+        
         const newStream = await navigator.mediaDevices.getUserMedia({ 
-          audio: { deviceId: selectedDeviceId } 
+          audio: audioConstraints 
         });
+        currentStream = newStream;
         setStream(newStream);
         
         const devs = await navigator.mediaDevices.enumerateDevices();
@@ -27,7 +37,7 @@ const MicCheckVisual: React.FC = () => {
     };
     startMic();
     return () => {
-      stream?.getTracks().forEach(t => t.stop());
+      currentStream?.getTracks().forEach(t => t.stop());
     };
   }, [selectedDeviceId]);
 

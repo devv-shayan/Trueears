@@ -94,7 +94,7 @@ export const StepPermissions: React.FC<StepProps> & { Visual: React.FC } = ({ on
           disabled={!granted}
           className={`w-full py-4 rounded-xl font-['Syne'] font-bold text-xs uppercase tracking-wider transition-all duration-300
             ${granted
-              ? 'bg-white text-black hover:bg-emerald-100 shadow-lg' 
+              ? 'bg-white text-black hover:bg-emerald-100 shadow-lg cursor-pointer' 
               : 'bg-[#222] text-gray-600 cursor-not-allowed'
             }`}
         >
