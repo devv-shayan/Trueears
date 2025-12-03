@@ -14,7 +14,7 @@ export const AboutSettings: React.FC<AboutSettingsProps> = ({ theme }) => {
       <div className={`space-y-6 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
         <div>
           <p className={`text-sm mb-1 ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>Version</p>
-          <p className={`text-lg font-mono ${isDark ? 'text-gray-100' : 'text-gray-900'}`}>0.1.0</p>
+          <p className={`text-lg font-mono ${isDark ? 'text-gray-100' : 'text-gray-900'}`}>0.2.0</p>
         </div>
 
         <div>
