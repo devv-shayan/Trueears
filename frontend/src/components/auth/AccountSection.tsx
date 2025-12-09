@@ -18,7 +18,6 @@ export const AccountSection: React.FC<AccountSectionProps> = ({
     user,
     login,
     logout,
-    refreshAuthState
 }) => {
     const isDark = theme === 'dark';
 
@@ -100,78 +99,122 @@ export const AccountSection: React.FC<AccountSectionProps> = ({
         );
     }
 
-    // Authenticated state
+    // Authenticated state - Free plan with upgrade option
     return (
-        <div className={`rounded-2xl overflow-hidden ${isDark ? 'bg-[#0a0a0a] border border-[#1a1a1a]' : 'bg-gray-50 border border-gray-100'}`}>
-            {/* Profile Header */}
-            <div className="p-8">
-                <div className="flex items-center gap-5">
-                    {/* Profile Picture */}
-                    {user.picture ? (
-                        <div className="relative">
-                            <img
-                                src={user.picture}
-                                alt={user.name || 'Profile'}
-                                className="w-16 h-16 rounded-2xl object-cover"
-                            />
-                            <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-emerald-500 rounded-full flex items-center justify-center">
-                                <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3">
-                                    <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
-                                </svg>
+        <div className="space-y-6">
+            {/* Profile Card */}
+            <div className={`rounded-2xl overflow-hidden ${isDark ? 'bg-[#0a0a0a] border border-[#1a1a1a]' : 'bg-gray-50 border border-gray-100'}`}>
+                {/* Profile Header */}
+                <div className="p-8">
+                    <div className="flex items-center gap-5">
+                        {/* Profile Picture */}
+                        {user.picture ? (
+                            <div className="relative">
+                                <img
+                                    src={user.picture}
+                                    alt={user.name || 'Profile'}
+                                    className="w-16 h-16 rounded-2xl object-cover"
+                                />
+                                <div className="absolute -bottom-1 -right-1 w-5 h-5 bg-emerald-500 rounded-full flex items-center justify-center">
+                                    <svg className="w-3 h-3 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3">
+                                        <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                    </svg>
+                                </div>
                             </div>
-                        </div>
-                    ) : (
-                        <div className={`w-16 h-16 rounded-2xl ${isDark ? 'bg-emerald-500/20' : 'bg-emerald-500/10'} flex items-center justify-center`}>
-                            <span className="text-2xl font-bold text-emerald-500">
-                                {(user.name || user.email)[0].toUpperCase()}
-                            </span>
-                        </div>
-                    )}
+                        ) : (
+                            <div className={`w-16 h-16 rounded-2xl ${isDark ? 'bg-emerald-500/20' : 'bg-emerald-500/10'} flex items-center justify-center`}>
+                                <span className="text-2xl font-bold text-emerald-500">
+                                    {(user.name || user.email)[0].toUpperCase()}
+                                </span>
+                            </div>
+                        )}
 
-                    {/* User Info */}
-                    <div className="flex-1">
-                        <div className={`inline-block px-2 py-0.5 rounded text-[9px] font-bold tracking-wide mb-1 ${isDark ? 'bg-emerald-500/10 text-emerald-400' : 'bg-emerald-500/10 text-emerald-600'}`}>
-                            CONNECTED
+                        {/* User Info */}
+                        <div className="flex-1">
+                            <div className={`inline-block px-2 py-0.5 rounded text-[9px] font-bold tracking-wide mb-1 ${isDark ? 'bg-gray-800 text-gray-400' : 'bg-gray-200 text-gray-600'}`}>
+                                FREE PLAN
+                            </div>
+                            <h3 className={`font-bold text-lg ${isDark ? 'text-gray-100' : 'text-gray-900'}`}>
+                                {user.name || 'User'}
+                            </h3>
+                            <p className={`text-sm ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>
+                                {user.email}
+                            </p>
                         </div>
-                        <h3 className={`font-['Syne'] font-bold text-lg ${isDark ? 'text-gray-100' : 'text-gray-900'}`}>
-                            {user.name || 'User'}
-                        </h3>
-                        <p className={`text-sm ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>
-                            {user.email}
-                        </p>
                     </div>
+                </div>
+
+                {/* Stats Section */}
+                <div className={`px-8 py-5 grid grid-cols-3 gap-4 ${isDark ? 'bg-[#0f0f0f] border-y border-[#1a1a1a]' : 'bg-white border-y border-gray-100'}`}>
+                    {[
+                        { label: 'Plan', value: 'Free' },
+                        { label: 'Synced', value: 'Yes', highlight: true },
+                        { label: 'Status', value: 'Active', highlight: true }
+                    ].map((stat, idx) => (
+                        <div key={idx} className="text-center">
+                            <p className={`text-[10px] font-bold uppercase tracking-wide mb-1 ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>
+                                {stat.label}
+                            </p>
+                            <p className={`text-sm font-bold ${stat.highlight ? 'text-emerald-500' : isDark ? 'text-gray-300' : 'text-gray-700'}`}>
+                                {stat.value}
+                            </p>
+                        </div>
+                    ))}
+                </div>
+
+                {/* Sign Out Button */}
+                <div className="p-6">
+                    <button
+                        onClick={logout}
+                        className={`w-full py-3 rounded-xl text-sm font-medium transition-all duration-200 cursor-pointer ${isDark
+                            ? 'bg-[#151515] text-gray-400 hover:bg-[#1a1a1a] hover:text-gray-200 border border-[#252525]'
+                            : 'bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-800 border border-gray-200'
+                            }`}
+                    >
+                        Sign Out
+                    </button>
                 </div>
             </div>
 
-            {/* Stats/Info Section */}
-            <div className={`px-8 py-5 grid grid-cols-3 gap-4 ${isDark ? 'bg-[#0f0f0f] border-y border-[#1a1a1a]' : 'bg-white border-y border-gray-100'}`}>
-                {[
-                    { label: 'Plan', value: 'Pro', highlight: true },
-                    { label: 'Synced', value: 'Yes' },
-                    { label: 'Status', value: 'Active' }
-                ].map((stat, idx) => (
-                    <div key={idx} className="text-center">
-                        <p className={`text-[10px] font-bold uppercase tracking-wide mb-1 ${isDark ? 'text-gray-600' : 'text-gray-400'}`}>
-                            {stat.label}
-                        </p>
-                        <p className={`text-sm font-bold ${stat.highlight ? 'text-emerald-500' : isDark ? 'text-gray-300' : 'text-gray-700'}`}>
-                            {stat.value}
-                        </p>
+            {/* Upgrade Card */}
+            <div className={`rounded-2xl overflow-hidden ${isDark ? 'bg-gradient-to-br from-emerald-900/30 to-emerald-950/50 border border-emerald-800/30' : 'bg-gradient-to-br from-emerald-50 to-emerald-100/50 border border-emerald-200'}`}>
+                <div className="p-8">
+                    <div className="flex items-start gap-4">
+                        <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${isDark ? 'bg-emerald-500/20' : 'bg-emerald-500/10'}`}>
+                            <svg className="w-6 h-6 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2">
+                                <path strokeLinecap="round" strokeLinejoin="round" d="M13 10V3L4 14h7v7l9-11h-7z" />
+                            </svg>
+                        </div>
+                        <div className="flex-1">
+                            <h4 className={`font-bold text-lg mb-1 ${isDark ? 'text-gray-100' : 'text-gray-900'}`}>
+                                Upgrade to Pro
+                            </h4>
+                            <p className={`text-sm mb-4 ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
+                                Unlock unlimited dictation, priority processing, and advanced features.
+                            </p>
+                            <ul className="space-y-2 mb-6">
+                                {[
+                                    'Unlimited voice dictation',
+                                    'Priority AI processing',
+                                    'Advanced app profiles',
+                                    'Premium support'
+                                ].map((feature, idx) => (
+                                    <li key={idx} className="flex items-center gap-2 text-sm">
+                                        <svg className="w-4 h-4 text-emerald-500" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="2.5">
+                                            <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                                        </svg>
+                                        <span className={isDark ? 'text-gray-300' : 'text-gray-700'}>{feature}</span>
+                                    </li>
+                                ))}
+                            </ul>
+                            <button
+                                className="w-full py-3 rounded-xl font-semibold text-sm bg-emerald-500 text-white hover:bg-emerald-600 shadow-lg hover:shadow-xl transition-all duration-300 cursor-pointer"
+                            >
+                                Upgrade Now — $9/month
+                            </button>
+                        </div>
                     </div>
-                ))}
-            </div>
-
-            {/* Action Button */}
-            <div className="p-6">
-                <button
-                    onClick={logout}
-                    className={`w-full py-3 rounded-xl text-sm font-medium transition-all duration-200 cursor-pointer ${isDark
-                        ? 'bg-[#151515] text-gray-400 hover:bg-[#1a1a1a] hover:text-gray-200 border border-[#252525]'
-                        : 'bg-gray-100 text-gray-600 hover:bg-gray-200 hover:text-gray-800 border border-gray-200'
-                        }`}
-                >
-                    Sign Out
-                </button>
+                </div>
             </div>
         </div>
     );
