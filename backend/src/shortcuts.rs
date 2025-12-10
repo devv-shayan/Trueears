@@ -8,13 +8,13 @@ pub fn register_shortcuts(app: &AppHandle) -> Result<(), Box<dyn std::error::Err
     // Unregister all existing shortcuts first to prevent "already registered" errors
     let _ = app.global_shortcut().unregister_all();
     log::info!("Unregistered all existing shortcuts");
-    
+
     // Register recording shortcut (Ctrl+Shift+K / Cmd+Shift+K)
     if let Err(e) = register_recording_shortcut(app) {
         log::error!("Failed to register recording shortcut: {}", e);
         return Err(e);
     }
-    
+
     // Register settings shortcut (Ctrl+Shift+; / Cmd+Shift+;)
     // Using semicolon instead of L to avoid conflicts with other apps
     if let Err(e) = register_settings_shortcut(app) {
@@ -50,13 +50,14 @@ fn register_recording_shortcut(app: &AppHandle) -> Result<(), Box<dyn std::error
 
                 // Get active window info first
                 let window_info = get_active_window_info();
-                
+
                 // Close settings window only if user is NOT in the Settings window
                 // Check by window title to avoid focus detection issues with global hotkeys
-                let is_in_settings = window_info.as_ref()
+                let is_in_settings = window_info
+                    .as_ref()
                     .map(|info| info.window_title.contains("Scribe Settings"))
                     .unwrap_or(false);
-                
+
                 if let Some(settings_window) = app_handle.get_webview_window("settings") {
                     if !is_in_settings {
                         log::info!("Closing settings window - user is in another app");
@@ -78,7 +79,7 @@ fn register_recording_shortcut(app: &AppHandle) -> Result<(), Box<dyn std::error
                     }
 
                     log::info!("Emitting toggle-recording event with window info");
-                    
+
                     // Debug: log window state before show
                     if let Ok(visible) = window.is_visible() {
                         log::info!("Window visible before: {}", visible);
@@ -86,15 +87,15 @@ fn register_recording_shortcut(app: &AppHandle) -> Result<(), Box<dyn std::error
                     if let Ok(size) = window.outer_size() {
                         log::info!("Window size: {}x{}", size.width, size.height);
                     }
-                    
+
                     // Ensure window is visible
                     let _ = window.unminimize();
                     let _ = window.show();
                     let _ = window.set_always_on_top(true);
-                    
+
                     // Emit event after window is shown
                     let _ = window.emit("toggle-recording", window_info);
-                    
+
                     // Debug: log window state after show
                     if let Ok(visible) = window.is_visible() {
                         log::info!("Window visible after: {}", visible);
@@ -121,7 +122,7 @@ fn register_settings_shortcut(app: &AppHandle) -> Result<(), Box<dyn std::error:
         move |_app, _shortcut, event| {
             if event.state == ShortcutState::Pressed {
                 log::info!("Settings shortcut pressed - opening settings window");
-                
+
                 // Call open_settings_window command
                 let app_clone = app_handle.clone();
                 tauri::async_runtime::spawn(async move {

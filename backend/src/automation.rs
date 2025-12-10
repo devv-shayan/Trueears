@@ -4,7 +4,10 @@ use once_cell::sync::Lazy;
 use std::collections::HashMap;
 use std::thread;
 use std::time::Duration;
-use std::{env, path::{Path, PathBuf}};
+use std::{
+    env,
+    path::{Path, PathBuf},
+};
 use walkdir::{DirEntry, WalkDir};
 
 enum TextSegment {
@@ -50,7 +53,9 @@ pub async fn paste_text(text: &str) -> Result<(), String> {
 
     // Clear clipboard after all segments are pasted
     thread::sleep(Duration::from_millis(100));
-    clipboard.clear().map_err(|e| format!("Failed to clear clipboard: {}", e))?;
+    clipboard
+        .clear()
+        .map_err(|e| format!("Failed to clear clipboard: {}", e))?;
     log::info!("Clipboard cleared");
 
     Ok(())
@@ -74,9 +79,11 @@ fn paste_full_text(text: &str) -> Result<(), String> {
 
     // Clear clipboard after paste to avoid leaking transcription
     thread::sleep(Duration::from_millis(100));
-    clipboard.clear().map_err(|e| format!("Failed to clear clipboard: {}", e))?;
+    clipboard
+        .clear()
+        .map_err(|e| format!("Failed to clear clipboard: {}", e))?;
     log::info!("Clipboard cleared");
-    
+
     Ok(())
 }
 
@@ -204,8 +211,7 @@ fn split_into_segments(text: &str) -> Vec<TextSegment> {
 }
 
 fn is_valid_mention_char(ch: char) -> bool {
-    ch.is_alphanumeric()
-        || matches!(ch, '.' | '_' | '-' | '/' | '\\')
+    ch.is_alphanumeric() || matches!(ch, '.' | '_' | '-' | '/' | '\\')
 }
 
 fn is_valid_file_hint(candidate: &str) -> bool {
@@ -235,9 +241,7 @@ fn resolve_file_hint(file_hint: &str) -> String {
         return cleaned;
     }
 
-    FILE_INDEX
-        .resolve(&cleaned)
-        .unwrap_or(cleaned)
+    FILE_INDEX.resolve(&cleaned).unwrap_or(cleaned)
 }
 
 struct FileIndex {
@@ -264,7 +268,12 @@ impl FileIndex {
                 .iter()
                 .find(|path| path.contains("backend"))
                 .cloned()
-                .or_else(|| matches.iter().find(|path| path.contains("frontend")).cloned())
+                .or_else(|| {
+                    matches
+                        .iter()
+                        .find(|path| path.contains("frontend"))
+                        .cloned()
+                })
                 .or_else(|| matches.first().cloned())
         }?;
 

@@ -9,28 +9,34 @@ pub struct ActiveWindowInfo {
 
 #[cfg(target_os = "windows")]
 pub fn get_active_window_info() -> Option<ActiveWindowInfo> {
-    use windows::Win32::Foundation::{HWND, CloseHandle};
-    use windows::Win32::UI::WindowsAndMessaging::{GetForegroundWindow, GetWindowTextW, GetWindowThreadProcessId};
-    use windows::Win32::System::Threading::{OpenProcess, QueryFullProcessImageNameW, PROCESS_QUERY_LIMITED_INFORMATION, PROCESS_NAME_WIN32};
     use windows::core::PWSTR;
+    use windows::Win32::Foundation::{CloseHandle, HWND};
+    use windows::Win32::System::Threading::{
+        OpenProcess, QueryFullProcessImageNameW, PROCESS_NAME_WIN32,
+        PROCESS_QUERY_LIMITED_INFORMATION,
+    };
+    use windows::Win32::UI::WindowsAndMessaging::{
+        GetForegroundWindow, GetWindowTextW, GetWindowThreadProcessId,
+    };
 
     unsafe {
         let hwnd: HWND = GetForegroundWindow();
-        
+
         // Get window title
         let mut title: [u16; 512] = [0; 512];
         let len = GetWindowTextW(hwnd, &mut title);
-        
+
         if len == 0 {
             return None;
         }
 
         let window_title = String::from_utf16_lossy(&title[..len as usize]);
-        
+
         // Skip invalid windows
-        if window_title.is_empty() 
-            || window_title == "Program Manager" 
-            || window_title == "Windows Default Lock Screen" {
+        if window_title.is_empty()
+            || window_title == "Program Manager"
+            || window_title == "Windows Default Lock Screen"
+        {
             return None;
         }
 
@@ -43,24 +49,27 @@ pub fn get_active_window_info() -> Option<ActiveWindowInfo> {
         }
 
         // Open process to get executable path
-        let process_handle = match OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, process_id) {
+        let process_handle = match OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, false, process_id)
+        {
             Ok(handle) => handle,
-            Err(_) => return Some(ActiveWindowInfo {
-                app_name: "Unknown".to_string(),
-                window_title: window_title.clone(),
-                executable_path: "".to_string(),
-            }),
+            Err(_) => {
+                return Some(ActiveWindowInfo {
+                    app_name: "Unknown".to_string(),
+                    window_title: window_title.clone(),
+                    executable_path: "".to_string(),
+                })
+            }
         };
 
         // Get executable path
         let mut exe_path: [u16; 512] = [0; 512];
         let mut size: u32 = 512;
-        
+
         let exe_path_str = match QueryFullProcessImageNameW(
-            process_handle, 
-            PROCESS_NAME_WIN32, 
+            process_handle,
+            PROCESS_NAME_WIN32,
             PWSTR(exe_path.as_mut_ptr()),
-            &mut size
+            &mut size,
         ) {
             Ok(_) => {
                 let path = String::from_utf16_lossy(&exe_path[..size as usize]);
@@ -76,7 +85,12 @@ pub fn get_active_window_info() -> Option<ActiveWindowInfo> {
             .unwrap_or("Unknown")
             .to_string();
 
-        log::info!("Active window - Title: {}, App: {}, Path: {}", window_title, app_name, exe_path_str);
+        log::info!(
+            "Active window - Title: {}, App: {}, Path: {}",
+            window_title,
+            app_name,
+            exe_path_str
+        );
 
         // Clean up process handle
         let _ = CloseHandle(process_handle);
