@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { TranscriptionSettings } from './settings/TranscriptionSettings';
 import { LLMSettings } from './settings/LLMSettings';
 import { AppProfilesSettings } from './settings/AppProfilesSettings';
-import { AppearanceSettings } from './settings/AppearanceSettings';
+import { PreferencesSettings } from './settings/PreferencesSettings';
 import { AboutSettings } from './settings/AboutSettings';
 import { AccountSection } from './auth/AccountSection';
 import { OnboardingWizard } from './onboarding/OnboardingWizard';
@@ -10,7 +10,7 @@ import { useSettings } from '../hooks/useSettings';
 import { useAuth } from '../hooks/useAuth';
 import { getCurrentWindow } from '@tauri-apps/api/window';
 
-type SettingsTab = 'transcription' | 'llm' | 'profiles' | 'appearance' | 'account' | 'about';
+type SettingsTab = 'transcription' | 'llm' | 'profiles' | 'preferences' | 'account' | 'about';
 
 export const SettingsWindow: React.FC = () => {
   const [activeTab, setActiveTab] = useState<SettingsTab>('transcription');
@@ -140,16 +140,16 @@ export const SettingsWindow: React.FC = () => {
           </button>
 
           <button
-            onClick={() => setActiveTab('appearance')}
-            className={`w-full text-left px-3 py-2.5 rounded-lg text-sm transition-colors flex items-center gap-3 cursor-pointer ${activeTab === 'appearance'
+            onClick={() => setActiveTab('preferences')}
+            className={`w-full text-left px-3 py-2.5 rounded-lg text-sm transition-colors flex items-center gap-3 cursor-pointer ${activeTab === 'preferences'
               ? isDark ? 'bg-[#252525] text-gray-100 font-medium' : 'bg-gray-100 text-gray-800 font-medium'
               : isDark ? 'text-gray-400 hover:bg-[#252525] hover:text-gray-100' : 'text-gray-500 hover:bg-gray-200 hover:text-gray-800'
               }`}
           >
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M7 21a4 4 0 01-4-4V5a2 2 0 012-2h4a2 2 0 012 2v12a4 4 0 01-4 4zm0 0h12a2 2 0 002-2v-4a2 2 0 00-2-2h-2.343M11 7.343l1.657-1.657a2 2 0 012.828 0l2.829 2.829a2 2 0 010 2.828l-8.486 8.485M7 17h.01" />
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6V4m0 2a2 2 0 100 4m0-4a2 2 0 110 4m-6 8a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4m6 6v10m6-2a2 2 0 100-4m0 4a2 2 0 110-4m0 4v2m0-6V4" />
             </svg>
-            Appearance
+            Preferences
           </button>
 
           <button
@@ -200,7 +200,7 @@ export const SettingsWindow: React.FC = () => {
         )}
         {activeTab === 'llm' && <LLMSettings {...settings} theme={settings.theme} />}
         {activeTab === 'profiles' && <AppProfilesSettings theme={settings.theme} />}
-        {activeTab === 'appearance' && <AppearanceSettings theme={settings.theme} saveTheme={settings.saveTheme} />}
+        {activeTab === 'preferences' && <PreferencesSettings theme={settings.theme} saveTheme={settings.saveTheme} recordingMode={settings.recordingMode} saveRecordingMode={settings.saveRecordingMode} />}
         {activeTab === 'account' && (
           <div className="p-6">
             <h2 className={`text-lg font-bold mb-4 ${isDark ? 'text-gray-100' : 'text-gray-800'}`}>Account</h2>

@@ -12,15 +12,54 @@ const isTauri = () => {
 };
 
 export const tauriAPI = {
-    onToggleRecording: async (callback: (windowInfo?: ActiveWindowInfo | null) => void) => {
-        console.log('[tauriAPI] Setting up toggle-recording listener, isTauri:', isTauri());
+    onShortcutPressed: async (callback: (windowInfo?: ActiveWindowInfo | null) => void) => {
+        console.log('[tauriAPI] Setting up shortcut-pressed listener, isTauri:', isTauri());
         try {
             if (!isTauri()) {
                 console.warn('[tauriAPI] Not in Tauri context, skipping listener setup');
                 return () => {};
             }
-            const unlisten = await listen<ActiveWindowInfo | null>('toggle-recording', (event) => {
-                console.log('[tauriAPI] toggle-recording event received with payload:', event.payload);
+            const unlisten = await listen<ActiveWindowInfo | null>('shortcut-pressed', (event) => {
+                console.log('[tauriAPI] shortcut-pressed event received with payload:', event.payload);
+                callback(event.payload);
+            });
+            console.log('[tauriAPI] shortcut-pressed listener registered successfully');
+            return unlisten;
+        } catch (error) {
+            console.error('[tauriAPI] Failed to register shortcut-pressed listener:', error);
+            return () => {};
+        }
+    },
+
+    onShortcutReleased: async (callback: () => void) => {
+        console.log('[tauriAPI] Setting up shortcut-released listener, isTauri:', isTauri());
+        try {
+            if (!isTauri()) {
+                console.warn('[tauriAPI] Not in Tauri context, skipping listener setup');
+                return () => {};
+            }
+            const unlisten = await listen('shortcut-released', () => {
+                console.log('[tauriAPI] shortcut-released event received');
+                callback();
+            });
+            console.log('[tauriAPI] shortcut-released listener registered successfully');
+            return unlisten;
+        } catch (error) {
+            console.error('[tauriAPI] Failed to register shortcut-released listener:', error);
+            return () => {};
+        }
+    },
+
+    // Legacy alias for backward compatibility
+    onToggleRecording: async (callback: (windowInfo?: ActiveWindowInfo | null) => void) => {
+        console.log('[tauriAPI] Setting up toggle-recording listener (legacy), isTauri:', isTauri());
+        try {
+            if (!isTauri()) {
+                console.warn('[tauriAPI] Not in Tauri context, skipping listener setup');
+                return () => {};
+            }
+            const unlisten = await listen<ActiveWindowInfo | null>('shortcut-pressed', (event) => {
+                console.log('[tauriAPI] shortcut-pressed event received with payload:', event.payload);
                 callback(event.payload);
             });
             console.log('[tauriAPI] toggle-recording listener registered successfully');

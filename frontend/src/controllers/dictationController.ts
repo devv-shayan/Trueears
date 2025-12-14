@@ -16,6 +16,22 @@ export const postProcessTranscription = async (
   llmModel: string,
   defaultPrompt: string
 ): Promise<string> => {
+  const isRefusal = (text: string) => {
+    const lower = text.toLowerCase();
+    return [
+      'i cannot',
+      "i can't",
+      'i can’t',
+      "can't do that",
+      'cannot do that',
+      "can't perform",
+      'cannot perform',
+      "i'm unable",
+      'i am unable',
+      'as an ai'
+    ].some(phrase => lower.includes(phrase));
+  };
+
   try {
     console.log('[DictationController] Window info:', windowInfo);
     const systemPrompt = AppProfileService.getSystemPrompt(windowInfo, defaultPrompt);
@@ -29,6 +45,11 @@ export const postProcessTranscription = async (
       llmModel
     );
     
+    if (isRefusal(formattedText)) {
+      console.warn('[DictationController] LLM response looks like a refusal, falling back to raw text');
+      return rawText;
+    }
+
     console.log('[DictationController] Formatted result:', formattedText);
     return formattedText;
   } catch (error) {

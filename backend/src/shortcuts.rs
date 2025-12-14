@@ -78,7 +78,7 @@ fn register_recording_shortcut(app: &AppHandle) -> Result<(), Box<dyn std::error
                         return;
                     }
 
-                    log::info!("Emitting toggle-recording event with window info");
+                    log::info!("Emitting shortcut-pressed event with window info");
 
                     // Debug: log window state before show
                     if let Ok(visible) = window.is_visible() {
@@ -93,13 +93,24 @@ fn register_recording_shortcut(app: &AppHandle) -> Result<(), Box<dyn std::error
                     let _ = window.show();
                     let _ = window.set_always_on_top(true);
 
-                    // Emit event after window is shown
-                    let _ = window.emit("toggle-recording", window_info);
+                    // Emit shortcut-pressed event (frontend handles mode logic)
+                    let _ = window.emit("shortcut-pressed", window_info);
 
                     // Debug: log window state after show
                     if let Ok(visible) = window.is_visible() {
                         log::info!("Window visible after: {}", visible);
                     }
+                }
+            } else if event.state == ShortcutState::Released {
+                log::info!("Recording shortcut released");
+                
+                // Skip during onboarding
+                if ONBOARDING_TRIGGER_ACTIVE.load(Ordering::SeqCst) {
+                    return;
+                }
+
+                if let Some(window) = app_handle.get_webview_window("main") {
+                    let _ = window.emit("shortcut-released", ());
                 }
             }
         }
