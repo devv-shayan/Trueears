@@ -1,6 +1,7 @@
 mod automation;
 mod shortcuts;
 mod window;
+mod installed_apps;
 
 use std::sync::atomic::{AtomicBool, Ordering};
 use window::ActiveWindowInfo;
@@ -62,6 +63,18 @@ async fn set_onboarding_trigger_active(active: bool) -> Result<(), String> {
     log::info!("set_onboarding_trigger_active: {}", active);
     ONBOARDING_TRIGGER_ACTIVE.store(active, Ordering::SeqCst);
     Ok(())
+}
+
+#[tauri::command]
+async fn search_installed_apps(query: String) -> Result<Vec<installed_apps::InstalledApp>, String> {
+    log::info!("search_installed_apps: query={}", query);
+    Ok(installed_apps::search_installed_apps(&query))
+}
+
+#[tauri::command]
+async fn get_installed_popular_apps() -> Result<Vec<installed_apps::InstalledApp>, String> {
+    log::info!("get_installed_popular_apps command called");
+    Ok(installed_apps::get_installed_popular_apps())
 }
 
 #[tauri::command]
@@ -187,10 +200,6 @@ pub fn run() {
 
             // First-run onboarding: auto-open settings if no API key is configured
             let store = app.store("settings.json").map_err(|e| e.to_string())?;
-            let has_groq_key = store.get("GROQ_API_KEY")
-                .and_then(|v| v.as_str().map(|s| s.to_string()))
-                .map(|s| !s.is_empty())
-                .unwrap_or(false);
             let onboarding_complete = store.get("SCRIBE_ONBOARDING_COMPLETE")
                 .and_then(|v| v.as_str().map(|s| s.to_string()))
                 .map(|s| s == "true")
@@ -218,7 +227,9 @@ pub fn run() {
             open_settings_window,
             get_store_value,
             set_store_value,
-            set_onboarding_trigger_active
+            set_onboarding_trigger_active,
+            search_installed_apps,
+            get_installed_popular_apps
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
