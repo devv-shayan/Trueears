@@ -3,10 +3,11 @@ use std::collections::HashMap;
 use std::path::PathBuf;
 use winreg::enums::*;
 use winreg::RegKey;
-use windows::Win32::UI::Shell::{SHGetFileInfoW, SHFILEINFOW, SHGFI_ICON, SHGFI_LARGEICON};
+use windows::Win32::UI::Shell::{SHGetFileInfoW, SHFILEINFOW, SHGFI_ICON, SHGFI_LARGEICON, IShellLinkW, ShellLink};
 use windows::Win32::Storage::FileSystem::FILE_FLAGS_AND_ATTRIBUTES;
 use windows::Win32::UI::WindowsAndMessaging::{DestroyIcon, DI_FLAGS};
-use windows::core::PCWSTR;
+use windows::Win32::System::Com::{CoInitializeEx, CoCreateInstance, CoUninitialize, CLSCTX_INPROC_SERVER, COINIT_APARTMENTTHREADED, IPersistFile, STGM_READ};
+use windows::core::{PCWSTR, ComInterface};
 use image::ImageEncoder;
 use walkdir::WalkDir;
 
@@ -264,7 +265,7 @@ fn get_all_registered_apps() -> HashMap<String, String> {
     executables
 }
 
-/// Collect Start Menu shortcuts
+/// Collect Start Menu shortcuts and resolve their target executables
 fn collect_start_menu_links() -> HashMap<String, String> {
     let mut map: HashMap<String, String> = HashMap::new();
     let mut start_menu_paths = Vec::new();
@@ -277,6 +278,9 @@ fn collect_start_menu_links() -> HashMap<String, String> {
         start_menu_paths.push(p);
     }
 
+    // Initialize COM for this thread
+    let com_initialized = unsafe { CoInitializeEx(None, COINIT_APARTMENTTHREADED).is_ok() };
+
     for dir in start_menu_paths {
         if !dir.exists() {
             continue;
@@ -285,17 +289,89 @@ fn collect_start_menu_links() -> HashMap<String, String> {
         for entry in WalkDir::new(dir).max_depth(3).into_iter().filter_map(|e| e.ok()) {
             let path = entry.path();
             if path.extension().and_then(|e| e.to_str()).map(|ext| ext.eq_ignore_ascii_case("lnk")).unwrap_or(false) {
-                if let Some(stem) = path.file_stem().and_then(|s| s.to_str()) {
-                    let lnk_path = path.to_string_lossy().to_string();
-                    // Create exe key from shortcut name
-                    let exe_key = format!("{}.exe", stem.to_lowercase());
-                    map.entry(exe_key).or_insert(lnk_path);
+                // Try to resolve the .lnk file to get the actual target executable
+                if let Some(target_path) = resolve_lnk_target(path) {
+                    if let Some(exe_name) = PathBuf::from(&target_path)
+                        .file_name()
+                        .and_then(|n| n.to_str())
+                    {
+                        let exe_key = exe_name.to_lowercase();
+                        // Only add if it's an .exe file
+                        if exe_key.ends_with(".exe") {
+                            map.entry(exe_key).or_insert(target_path);
+                        }
+                    }
                 }
             }
         }
     }
 
+    if com_initialized {
+        unsafe { CoUninitialize() };
+    }
+
     map
+}
+
+/// Resolve a .lnk shortcut file to its target path
+fn resolve_lnk_target(lnk_path: &std::path::Path) -> Option<String> {
+    unsafe {
+        // Create IShellLink instance
+        let shell_link: IShellLinkW = CoCreateInstance(&ShellLink, None, CLSCTX_INPROC_SERVER).ok()?;
+
+        // Get IPersistFile interface to load the .lnk file
+        let persist_file: IPersistFile = shell_link.cast().ok()?;
+
+        // Convert path to wide string
+        let lnk_path_wide: Vec<u16> = lnk_path
+            .to_string_lossy()
+            .encode_utf16()
+            .chain(std::iter::once(0))
+            .collect();
+
+        // Load the .lnk file
+        persist_file.Load(PCWSTR::from_raw(lnk_path_wide.as_ptr()), STGM_READ).ok()?;
+
+        // Get the target path
+        let mut target_buffer = [0u16; 260]; // MAX_PATH
+        shell_link.GetPath(&mut target_buffer, std::ptr::null_mut(), 0).ok()?;
+
+        // Convert to String
+        let target_path = String::from_utf16_lossy(&target_buffer);
+        let target_path = target_path.trim_end_matches('\0').to_string();
+
+        if target_path.is_empty() {
+            return None;
+        }
+
+        // Expand environment variables if present (e.g., %LOCALAPPDATA%)
+        let expanded = expand_env_vars(&target_path);
+
+        Some(expanded)
+    }
+}
+
+/// Expand Windows environment variables in a path
+fn expand_env_vars(path: &str) -> String {
+    let mut result = path.to_string();
+
+    // Common environment variables to expand
+    let vars = [
+        ("LOCALAPPDATA", std::env::var("LOCALAPPDATA").unwrap_or_default()),
+        ("APPDATA", std::env::var("APPDATA").unwrap_or_default()),
+        ("PROGRAMFILES", std::env::var("PROGRAMFILES").unwrap_or_default()),
+        ("PROGRAMFILES(X86)", std::env::var("PROGRAMFILES(X86)").unwrap_or_default()),
+        ("USERPROFILE", std::env::var("USERPROFILE").unwrap_or_default()),
+        ("SYSTEMROOT", std::env::var("SYSTEMROOT").unwrap_or_default()),
+    ];
+
+    for (var_name, var_value) in vars {
+        if !var_value.is_empty() {
+            result = result.replace(&format!("%{}%", var_name), &var_value);
+        }
+    }
+
+    result
 }
 
 /// Extract icon from file path and return as base64 PNG
