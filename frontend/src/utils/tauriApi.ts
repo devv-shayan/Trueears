@@ -4,6 +4,11 @@ import { getCurrentWindow } from '@tauri-apps/api/window';
 import { Store } from '@tauri-apps/plugin-store';
 import { ActiveWindowInfo } from '../types/appProfile';
 
+export interface ShortcutPressedPayload {
+    window_info: ActiveWindowInfo | null;
+    selected_text: string | null;
+}
+
 console.log('[tauriAPI] Module loaded');
 
 // Check if we're in Tauri context
@@ -12,21 +17,98 @@ const isTauri = () => {
 };
 
 export const tauriAPI = {
-    onToggleRecording: async (callback: (windowInfo?: ActiveWindowInfo | null) => void) => {
-        console.log('[tauriAPI] Setting up toggle-recording listener, isTauri:', isTauri());
+    onShortcutPressed: async (callback: (payload: ShortcutPressedPayload) => void) => {
+        console.log('[tauriAPI] Setting up shortcut-pressed listener, isTauri:', isTauri());
         try {
             if (!isTauri()) {
                 console.warn('[tauriAPI] Not in Tauri context, skipping listener setup');
                 return () => {};
             }
-            const unlisten = await listen<ActiveWindowInfo | null>('toggle-recording', (event) => {
-                console.log('[tauriAPI] toggle-recording event received with payload:', event.payload);
+            const unlisten = await listen<ShortcutPressedPayload>('shortcut-pressed', (event) => {
+                console.log('[tauriAPI] shortcut-pressed event received with payload:', event.payload);
+                callback(event.payload);
+            });
+            console.log('[tauriAPI] shortcut-pressed listener registered successfully');
+            return unlisten;
+        } catch (error) {
+            console.error('[tauriAPI] Failed to register shortcut-pressed listener:', error);
+            return () => {};
+        }
+    },
+
+    onShortcutReleased: async (callback: () => void) => {
+        console.log('[tauriAPI] Setting up shortcut-released listener, isTauri:', isTauri());
+        try {
+            if (!isTauri()) {
+                console.warn('[tauriAPI] Not in Tauri context, skipping listener setup');
+                return () => {};
+            }
+            const unlisten = await listen('shortcut-released', () => {
+                console.log('[tauriAPI] shortcut-released event received');
+                callback();
+            });
+            console.log('[tauriAPI] shortcut-released listener registered successfully');
+            return unlisten;
+        } catch (error) {
+            console.error('[tauriAPI] Failed to register shortcut-released listener:', error);
+            return () => {};
+        }
+    },
+
+    // Legacy alias for backward compatibility
+    onToggleRecording: async (callback: (payload: ShortcutPressedPayload) => void) => {
+        console.log('[tauriAPI] Setting up toggle-recording listener (legacy), isTauri:', isTauri());
+        try {
+            if (!isTauri()) {
+                console.warn('[tauriAPI] Not in Tauri context, skipping listener setup');
+                return () => {};
+            }
+            const unlisten = await listen<ShortcutPressedPayload>('shortcut-pressed', (event) => {
+                console.log('[tauriAPI] shortcut-pressed event received with payload:', event.payload);
                 callback(event.payload);
             });
             console.log('[tauriAPI] toggle-recording listener registered successfully');
             return unlisten;
         } catch (error) {
             console.error('[tauriAPI] Failed to register toggle-recording listener:', error);
+            return () => {};
+        }
+    },
+
+    onOnboardingTrigger: async (callback: () => void) => {
+        console.log('[tauriAPI] Setting up onboarding-trigger listener, isTauri:', isTauri());
+        try {
+            if (!isTauri()) {
+                console.warn('[tauriAPI] Not in Tauri context, skipping listener setup');
+                return () => {};
+            }
+            const unlisten = await listen('onboarding-trigger', () => {
+                console.log('[tauriAPI] onboarding-trigger event received');
+                callback();
+            });
+            console.log('[tauriAPI] onboarding-trigger listener registered successfully');
+            return unlisten;
+        } catch (error) {
+            console.error('[tauriAPI] Failed to register onboarding-trigger listener:', error);
+            return () => {};
+        }
+    },
+
+    onOnboardingTriggerState: async (callback: (active: boolean) => void) => {
+        console.log('[tauriAPI] Setting up onboarding-trigger-state listener, isTauri:', isTauri());
+        try {
+            if (!isTauri()) {
+                console.warn('[tauriAPI] Not in Tauri context, skipping listener setup');
+                return () => {};
+            }
+            const unlisten = await listen<boolean>('onboarding-trigger-state', (event) => {
+                console.log('[tauriAPI] onboarding-trigger-state event received:', event.payload);
+                callback(!!event.payload);
+            });
+            console.log('[tauriAPI] onboarding-trigger-state listener registered successfully');
+            return unlisten;
+        } catch (error) {
+            console.error('[tauriAPI] Failed to register onboarding-trigger-state listener:', error);
             return () => {};
         }
     },
@@ -195,6 +277,22 @@ export const tauriAPI = {
             await invoke('set_onboarding_trigger_active', { active });
         } catch (error) {
             console.error('[tauriAPI] Failed to set onboarding trigger active:', error);
+        }
+    },
+
+    copySelectedText: async (): Promise<string | null> => {
+        console.log('[tauriAPI] Copying selected text, isTauri:', isTauri());
+        try {
+            if (!isTauri()) {
+                console.warn('[tauriAPI] Not in Tauri context, returning null');
+                return null;
+            }
+            const text = await invoke<string | null>('copy_selected_text');
+            console.log('[tauriAPI] Copied selected text:', text ? `${text.length} chars` : 'none');
+            return text;
+        } catch (error) {
+            console.error('[tauriAPI] Failed to copy selected text:', error);
+            return null;
         }
     }
 };

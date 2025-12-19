@@ -4,7 +4,10 @@ use once_cell::sync::Lazy;
 use std::collections::HashMap;
 use std::thread;
 use std::time::Duration;
-use std::{env, path::{Path, PathBuf}};
+use std::{
+    env,
+    path::{Path, PathBuf},
+};
 use walkdir::{DirEntry, WalkDir};
 
 enum TextSegment {
@@ -50,7 +53,9 @@ pub async fn paste_text(text: &str) -> Result<(), String> {
 
     // Clear clipboard after all segments are pasted
     thread::sleep(Duration::from_millis(100));
-    clipboard.clear().map_err(|e| format!("Failed to clear clipboard: {}", e))?;
+    clipboard
+        .clear()
+        .map_err(|e| format!("Failed to clear clipboard: {}", e))?;
     log::info!("Clipboard cleared");
 
     Ok(())
@@ -74,9 +79,11 @@ fn paste_full_text(text: &str) -> Result<(), String> {
 
     // Clear clipboard after paste to avoid leaking transcription
     thread::sleep(Duration::from_millis(100));
-    clipboard.clear().map_err(|e| format!("Failed to clear clipboard: {}", e))?;
+    clipboard
+        .clear()
+        .map_err(|e| format!("Failed to clear clipboard: {}", e))?;
     log::info!("Clipboard cleared");
-    
+
     Ok(())
 }
 
@@ -165,6 +172,82 @@ fn send_paste(enigo: &mut Enigo) -> Result<(), String> {
     Ok(())
 }
 
+fn send_copy(enigo: &mut Enigo) -> Result<(), String> {
+    #[cfg(target_os = "macos")]
+    {
+        enigo
+            .key(Key::Meta, Direction::Press)
+            .map_err(|e| format!("Key press failed: {}", e))?;
+        enigo
+            .key(Key::Unicode('c'), Direction::Click)
+            .map_err(|e| format!("Key click failed: {}", e))?;
+        enigo
+            .key(Key::Meta, Direction::Release)
+            .map_err(|e| format!("Key release failed: {}", e))?;
+    }
+
+    #[cfg(not(target_os = "macos"))]
+    {
+        enigo
+            .key(Key::Control, Direction::Press)
+            .map_err(|e| format!("Key press failed: {}", e))?;
+        enigo
+            .key(Key::Unicode('c'), Direction::Click)
+            .map_err(|e| format!("Key click failed: {}", e))?;
+        enigo
+            .key(Key::Control, Direction::Release)
+            .map_err(|e| format!("Key release failed: {}", e))?;
+    }
+
+    Ok(())
+}
+
+pub fn copy_selected_text() -> Result<Option<String>, String> {
+    log::info!("Attempting to copy selected text...");
+    
+    let mut clipboard =
+        Clipboard::new().map_err(|e| format!("Failed to access clipboard: {}", e))?;
+    
+    // Clear clipboard first to detect if copy actually worked
+    clipboard
+        .clear()
+        .map_err(|e| format!("Failed to clear clipboard: {}", e))?;
+    
+    let mut enigo =
+        Enigo::new(&Settings::default()).map_err(|e| format!("Failed to create Enigo: {}", e))?;
+    
+    // Release any held modifier keys first (important because user might still be holding Ctrl+Shift from the shortcut)
+    let _ = enigo.key(Key::Control, Direction::Release);
+    let _ = enigo.key(Key::Shift, Direction::Release);
+    #[cfg(target_os = "macos")]
+    let _ = enigo.key(Key::Meta, Direction::Release);
+    
+    // Small delay to ensure modifiers are released
+    thread::sleep(Duration::from_millis(50));
+    
+    // Send Ctrl+C / Cmd+C to copy selected text
+    send_copy(&mut enigo)?;
+    
+    // Wait for clipboard to update (increased for reliability)
+    thread::sleep(Duration::from_millis(150));
+    
+    // Read clipboard content
+    match clipboard.get_text() {
+        Ok(text) if !text.trim().is_empty() => {
+            log::info!("Copied selected text: {} chars", text.len());
+            Ok(Some(text))
+        }
+        Ok(_) => {
+            log::info!("No text selected (clipboard empty)");
+            Ok(None)
+        }
+        Err(e) => {
+            log::warn!("Failed to read clipboard: {}", e);
+            Ok(None)
+        }
+    }
+}
+
 fn split_into_segments(text: &str) -> Vec<TextSegment> {
     let mut segments = Vec::new();
     let mut buffer = String::new();
@@ -204,8 +287,7 @@ fn split_into_segments(text: &str) -> Vec<TextSegment> {
 }
 
 fn is_valid_mention_char(ch: char) -> bool {
-    ch.is_alphanumeric()
-        || matches!(ch, '.' | '_' | '-' | '/' | '\\')
+    ch.is_alphanumeric() || matches!(ch, '.' | '_' | '-' | '/' | '\\')
 }
 
 fn is_valid_file_hint(candidate: &str) -> bool {
@@ -235,9 +317,7 @@ fn resolve_file_hint(file_hint: &str) -> String {
         return cleaned;
     }
 
-    FILE_INDEX
-        .resolve(&cleaned)
-        .unwrap_or(cleaned)
+    FILE_INDEX.resolve(&cleaned).unwrap_or(cleaned)
 }
 
 struct FileIndex {
@@ -264,7 +344,12 @@ impl FileIndex {
                 .iter()
                 .find(|path| path.contains("backend"))
                 .cloned()
-                .or_else(|| matches.iter().find(|path| path.contains("frontend")).cloned())
+                .or_else(|| {
+                    matches
+                        .iter()
+                        .find(|path| path.contains("frontend"))
+                        .cloned()
+                })
                 .or_else(|| matches.first().cloned())
         }?;
 

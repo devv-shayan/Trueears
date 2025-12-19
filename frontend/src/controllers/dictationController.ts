@@ -16,6 +16,22 @@ export const postProcessTranscription = async (
   llmModel: string,
   defaultPrompt: string
 ): Promise<string> => {
+  const isRefusal = (text: string) => {
+    const lower = text.toLowerCase();
+    return [
+      'i cannot',
+      "i can't",
+      'i can’t',
+      "can't do that",
+      'cannot do that',
+      "can't perform",
+      'cannot perform',
+      "i'm unable",
+      'i am unable',
+      'as an ai'
+    ].some(phrase => lower.includes(phrase));
+  };
+
   try {
     console.log('[DictationController] Window info:', windowInfo);
     const systemPrompt = AppProfileService.getSystemPrompt(windowInfo, defaultPrompt);
@@ -29,6 +45,11 @@ export const postProcessTranscription = async (
       llmModel
     );
     
+    if (isRefusal(formattedText)) {
+      console.warn('[DictationController] LLM response looks like a refusal, falling back to raw text');
+      return rawText;
+    }
+
     console.log('[DictationController] Formatted result:', formattedText);
     return formattedText;
   } catch (error) {
@@ -45,4 +66,25 @@ export const finalizeDictation = async (text: string) => {
   } catch (error) {
     console.error("Failed to send transcription:", error);
   }
+};
+
+export const transformSelectedText = async (
+  selectedText: string,
+  instruction: string,
+  llmApiKey: string,
+  llmModel: string
+): Promise<string> => {
+  console.log('[DictationController] Transforming selected text...');
+  console.log('[DictationController] Selected text:', selectedText.substring(0, 100) + (selectedText.length > 100 ? '...' : ''));
+  console.log('[DictationController] Instruction:', instruction);
+  
+  const transformedText = await GroqChatService.transformText(
+    selectedText,
+    instruction,
+    llmApiKey,
+    llmModel
+  );
+  
+  console.log('[DictationController] Transformed result:', transformedText.substring(0, 100) + (transformedText.length > 100 ? '...' : ''));
+  return transformedText;
 };

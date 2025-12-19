@@ -7,7 +7,7 @@ import { useToast } from '../hooks/useToast';
 import { SetupView } from './SetupView';
 import { StatusIndicator } from './StatusIndicator';
 import { WarningView } from './WarningView';
-import { tauriAPI } from '../utils/tauriApi';
+import { tauriAPI, ShortcutPressedPayload } from '../utils/tauriApi';
 import { ActiveWindowInfo } from '../types/appProfile';
 
 // Module-level flag to prevent duplicate listeners (survives React Strict Mode)
@@ -18,6 +18,7 @@ export const RecorderOverlay: React.FC = () => {
   const [uiMode, setUiMode] = useState<'none' | 'setup' | 'warning'>('none');
   const [warningMessage, setWarningMessage] = useState('');
   const [windowPadding, setWindowPadding] = useState(250); // Default padding, will be calculated
+  const [onboardingTriggerActive, setOnboardingTriggerActive] = useState(false);
   
   const { 
     apiKey, 
@@ -31,6 +32,7 @@ export const RecorderOverlay: React.FC = () => {
     language,
     autoDetectLanguage,
     theme,
+    recordingMode,
   } = useSettings();
   
   const isDark = theme === 'dark';
@@ -144,8 +146,8 @@ export const RecorderOverlay: React.FC = () => {
   };
 
   // -- Action: Start Recording --
-  const handleStartRecording = async (manualKey?: string, windowInfo?: ActiveWindowInfo | null) => {
-    console.log('[RecorderOverlay] handleStartRecording called with window info:', windowInfo);
+  const handleStartRecording = async (manualKey?: string, windowInfo?: ActiveWindowInfo | null, selectedText?: string | null) => {
+    console.log('[RecorderOverlay] handleStartRecording called with window info:', windowInfo, 'selected text:', selectedText ? `${selectedText.length} chars` : 'none');
     const effectiveKey = manualKey || apiKey;
     console.log('[RecorderOverlay] Effective key exists:', !!effectiveKey);
 
@@ -160,7 +162,7 @@ export const RecorderOverlay: React.FC = () => {
     }
 
     console.log('[RecorderOverlay] Starting dictation...');
-    await startDictation(windowInfo);
+    await startDictation(windowInfo, selectedText);
     setIsVisible(true);
     console.log('[RecorderOverlay] Dictation started, window visible');
   };
@@ -183,10 +185,41 @@ export const RecorderOverlay: React.FC = () => {
 
   const lastToggleTimeRef = useRef(0);
   const pendingWindowInfoRef = useRef<ActiveWindowInfo | null>(null);
+  const pendingSelectedTextRef = useRef<string | null>(null);
+  
+  // Refs for hybrid recording mode
+  const pressStartTimeRef = useRef(0);
+  const wasIdleOnPressRef = useRef(true);
+  const recordingModeRef = useRef(recordingMode);
+  const pttStopPendingRef = useRef(false); // Flag to stop recording as soon as it starts (for fast PTT release)
+  
+  // Keep recordingModeRef in sync
+  useEffect(() => {
+    console.log('[RecorderOverlay] Recording mode changed to:', recordingMode);
+    recordingModeRef.current = recordingMode;
+  }, [recordingMode]);
 
-  // -- Trigger: Toggle Visibility --
-  const handleToggle = useCallback(async (windowInfo?: ActiveWindowInfo | null) => {
-    let effectiveWindowInfo = windowInfo;
+  // Handle PTT stop pending - when release happened before recording started
+  useEffect(() => {
+    if (recordingStatus === 'recording' && pttStopPendingRef.current) {
+      console.log('[RecorderOverlay] PTT stop pending detected - stopping recording now that it has started');
+      pttStopPendingRef.current = false;
+      handleStopRecording();
+    }
+  }, [recordingStatus, handleStopRecording]);
+
+  // -- Trigger: Handle Shortcut Pressed --
+  const handleShortcutPressed = useCallback(async (payload: ShortcutPressedPayload) => {
+    if (onboardingTriggerActive) {
+      console.log('[RecorderOverlay] Ignoring press - onboarding trigger step active');
+      return;
+    }
+
+    // Extract window info and selected text from payload
+    let effectiveWindowInfo = payload.window_info;
+    const selectedText = payload.selected_text;
+    
+    console.log('[RecorderOverlay] Payload received - window_info:', effectiveWindowInfo, 'selected_text:', selectedText ? `${selectedText.length} chars` : 'none');
     
     // Check for Tutorial Override
     try {
@@ -211,52 +244,144 @@ export const RecorderOverlay: React.FC = () => {
     if (effectiveWindowInfo) {
       pendingWindowInfoRef.current = effectiveWindowInfo;
     }
-    console.log('[RecorderOverlay] handleToggle called');
+    pendingSelectedTextRef.current = selectedText || null;
+    
+    const currentMode = recordingModeRef.current;
+    console.log('[RecorderOverlay] handleShortcutPressed called, mode:', currentMode);
     console.log('[RecorderOverlay] State:', { recordingStatus, uiMode, isKeyLoaded, isVisible });
     
     const now = Date.now();
-    if (now - lastToggleTimeRef.current < 500) {
-      console.log('[RecorderOverlay] Debounced - ignoring rapid toggle');
-      return; // Ignore rapid toggles (debounce)
+    if (now - lastToggleTimeRef.current < 300) {
+      console.log('[RecorderOverlay] Debounced - ignoring rapid press');
+      return;
     }
     lastToggleTimeRef.current = now;
+    pressStartTimeRef.current = now;
 
     if (!isKeyLoaded) {
       console.log('[RecorderOverlay] Keys not loaded yet - waiting');
-      return; // Wait for storage check
+      return;
     }
 
     // Prevent starting a new recording while processing or showing success/error
     if (recordingStatus === 'processing' || recordingStatus === 'success' || recordingStatus === 'error') {
-      console.log('[RecorderOverlay] Still processing previous recording - ignoring toggle');
+      console.log('[RecorderOverlay] Still processing previous recording - ignoring press');
       showToast('Please wait for the current transcription to complete', 'error');
       return;
     }
 
+    // Track if we were idle when pressed (for auto mode)
+    wasIdleOnPressRef.current = recordingStatus !== 'recording';
+
     if (recordingStatus === 'recording') {
-      console.log('[RecorderOverlay] Stopping recording');
-      handleStopRecording();
+      // Already recording - handle based on mode
+      if (currentMode === 'toggle') {
+        console.log('[RecorderOverlay] Toggle mode: stopping recording on press');
+        handleStopRecording();
+      } else if (currentMode === 'push-to-talk') {
+        // PTT mode: normally release stops recording, but if user presses again
+        // while recording, treat it as an emergency stop (fallback for platforms
+        // where release events may not fire)
+        console.log('[RecorderOverlay] PTT mode: second press detected - emergency stop');
+        handleStopRecording();
+      } else {
+        // Auto mode: will be handled on release
+        console.log('[RecorderOverlay] Auto mode: waiting for release to determine behavior');
+      }
     } else if (uiMode === 'setup') {
       console.log('[RecorderOverlay] Closing setup');
-      // Close if toggled while in setup
       setIsVisible(false);
       setUiMode('none');
-      // Re-enable mouse event ignoring when closing
       tauriAPI.setIgnoreMouseEvents(true);
     } else {
+      // Not recording - start recording
       console.log('[RecorderOverlay] Starting recording');
-      // Start Recording
-      handleStartRecording(undefined, pendingWindowInfoRef.current);
+      pttStopPendingRef.current = false; // Clear any pending stop
+      handleStartRecording(undefined, pendingWindowInfoRef.current, pendingSelectedTextRef.current);
       pendingWindowInfoRef.current = null;
+      pendingSelectedTextRef.current = null;
     }
-  }, [recordingStatus, uiMode, handleStopRecording, apiKey, isKeyLoaded, showToast]);
+  }, [recordingStatus, uiMode, handleStopRecording, isKeyLoaded, showToast, onboardingTriggerActive, handleStartRecording]);
+
+  // -- Trigger: Handle Shortcut Released --
+  const handleShortcutReleased = useCallback(() => {
+    console.log('[RecorderOverlay] *** SHORTCUT RELEASED EVENT RECEIVED ***');
+    
+    if (onboardingTriggerActive) {
+      return;
+    }
+
+    const PTT_THRESHOLD_MS = 300;
+    const currentMode = recordingModeRef.current;
+    const holdDuration = Date.now() - pressStartTimeRef.current;
+    const wasIdleOnPress = wasIdleOnPressRef.current;
+    
+    console.log('[RecorderOverlay] handleShortcutReleased - Mode:', currentMode, 'Hold duration:', holdDuration + 'ms', 'Was idle on press:', wasIdleOnPress, 'Current status:', recordingStatus);
+
+    // Handle case where release happens before recording has started (async microphone init)
+    if (recordingStatus !== 'recording') {
+      if (currentMode === 'push-to-talk' && wasIdleOnPress) {
+        // PTT mode: user released before recording started - set pending stop
+        console.log('[RecorderOverlay] PTT mode: release before recording started - setting pending stop');
+        pttStopPendingRef.current = true;
+        return;
+      }
+      if (currentMode === 'auto' && wasIdleOnPress && holdDuration >= PTT_THRESHOLD_MS) {
+        // Auto mode with long press: treat as PTT, set pending stop
+        console.log('[RecorderOverlay] Auto mode: long press release before recording started - setting pending stop');
+        pttStopPendingRef.current = true;
+        return;
+      }
+      console.log('[RecorderOverlay] Not recording, ignoring release');
+      return;
+    }
+
+    if (currentMode === 'toggle') {
+      // Toggle mode: release does nothing (press handles everything)
+      console.log('[RecorderOverlay] Toggle mode: ignoring release');
+      return;
+    }
+
+    if (currentMode === 'push-to-talk') {
+      // PTT mode: always stop on release
+      console.log('[RecorderOverlay] PTT mode: stopping recording on release');
+      handleStopRecording();
+      return;
+    }
+
+    // Auto mode: determine behavior based on hold duration
+    if (wasIdleOnPress) {
+      // Just started recording on this press
+      if (holdDuration < PTT_THRESHOLD_MS) {
+        // Quick press - toggle mode: keep recording
+        console.log('[RecorderOverlay] Auto mode: quick press detected, keeping recording (toggle behavior)');
+      } else {
+        // Long press - PTT mode: stop recording
+        console.log('[RecorderOverlay] Auto mode: long press detected, stopping recording (PTT behavior)');
+        handleStopRecording();
+      }
+    } else {
+      // Was already recording - this is a toggle-stop (regardless of duration)
+      console.log('[RecorderOverlay] Auto mode: was already recording, stopping on release');
+      handleStopRecording();
+    }
+  }, [recordingStatus, handleStopRecording, onboardingTriggerActive]);
+
+  // Legacy handleToggle for backward compatibility (used by some internal calls)
+  const handleToggle = useCallback(async (payload: ShortcutPressedPayload) => {
+    handleShortcutPressed(payload);
+  }, [handleShortcutPressed]);
 
   // Refs to hold latest callbacks for Tauri event listeners
   const handleToggleRef = useRef(handleToggle);
+  const handleShortcutPressedRef = useRef(handleShortcutPressed);
+  const handleShortcutReleasedRef = useRef(handleShortcutReleased);
   
   // Keep refs up to date
   useEffect(() => {
     handleToggleRef.current = handleToggle;
+    handleShortcutPressedRef.current = handleShortcutPressed;
+    handleShortcutReleasedRef.current = handleShortcutReleased;
   });
 
   // -- Keyboard Shortcuts (Escape key + F12 for DevTools) --
@@ -301,8 +426,10 @@ export const RecorderOverlay: React.FC = () => {
     listenersInitialized = true;
     console.log('[RecorderOverlay] Setting up Tauri event listeners...');
     
-    let unlistenToggle: (() => void) | null = null;
+    let unlistenPressed: (() => void) | null = null;
+    let unlistenReleased: (() => void) | null = null;
     let unlistenWarning: (() => void) | null = null;
+    let unlistenOnboardingState: (() => void) | null = null;
     
     const setupListeners = async () => {
       console.log('[RecorderOverlay] Starting listener setup...');
@@ -310,9 +437,14 @@ export const RecorderOverlay: React.FC = () => {
       // Wait a bit for Tauri context to be available after HMR
       await new Promise(resolve => setTimeout(resolve, 100));
       
-      unlistenToggle = await tauriAPI.onToggleRecording((windowInfo) => {
-        console.log('[RecorderOverlay] Toggle recording callback fired with window info:', windowInfo);
-        handleToggleRef.current(windowInfo);
+      unlistenPressed = await tauriAPI.onShortcutPressed((windowInfo) => {
+        console.log('[RecorderOverlay] Shortcut pressed callback fired with window info:', windowInfo);
+        handleShortcutPressedRef.current(windowInfo);
+      });
+
+      unlistenReleased = await tauriAPI.onShortcutReleased(() => {
+        console.log('[RecorderOverlay] Shortcut released callback fired');
+        handleShortcutReleasedRef.current();
       });
       
       unlistenWarning = await tauriAPI.onShowWarning((msg) => {
@@ -324,6 +456,11 @@ export const RecorderOverlay: React.FC = () => {
             setIsVisible(false);
             setUiMode('none');
         }, 3000);
+      });
+
+      unlistenOnboardingState = await tauriAPI.onOnboardingTriggerState((active) => {
+        console.log('[RecorderOverlay] onboarding-trigger-state changed:', active);
+        setOnboardingTriggerActive(active);
       });
 
       console.log('[RecorderOverlay] All listeners set up successfully!');

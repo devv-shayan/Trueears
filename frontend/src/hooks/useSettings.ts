@@ -35,6 +35,9 @@ export const useSettings = () => {
   
   // Theme state - default to 'light'
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
+  
+  // Recording mode state - 'auto' | 'toggle' | 'push-to-talk'
+  const [recordingMode, setRecordingMode] = useState<'auto' | 'toggle' | 'push-to-talk'>('auto');
 
   const loadKeys = async () => {
     // Try to load from store first
@@ -109,6 +112,17 @@ export const useSettings = () => {
     const validTheme = (savedTheme === 'dark' || savedTheme === 'light') ? savedTheme : 'light';
     setTheme(validTheme);
     document.documentElement.setAttribute('data-theme', validTheme);
+    
+    // Load recording mode
+    let savedRecordingMode = await tauriAPI.getStoreValue('SCRIBE_RECORDING_MODE');
+    if (savedRecordingMode === null) {
+      savedRecordingMode = 'auto';
+      await tauriAPI.setStoreValue('SCRIBE_RECORDING_MODE', savedRecordingMode);
+    }
+    const validRecordingMode = (savedRecordingMode === 'auto' || savedRecordingMode === 'toggle' || savedRecordingMode === 'push-to-talk') 
+      ? savedRecordingMode as 'auto' | 'toggle' | 'push-to-talk'
+      : 'auto';
+    setRecordingMode(validRecordingMode);
     
     setIsKeyLoaded(true);
   };
@@ -195,6 +209,12 @@ export const useSettings = () => {
     tauriAPI.emitSettingsChanged();
   };
 
+  const saveRecordingMode = async (mode: 'auto' | 'toggle' | 'push-to-talk') => {
+    setRecordingMode(mode);
+    await tauriAPI.setStoreValue('SCRIBE_RECORDING_MODE', mode);
+    tauriAPI.emitSettingsChanged();
+  };
+
   return {
     apiKey,
     model,
@@ -221,5 +241,8 @@ export const useSettings = () => {
     // Theme settings
     theme,
     saveTheme,
+    // Recording mode settings
+    recordingMode,
+    saveRecordingMode,
   };
 };
