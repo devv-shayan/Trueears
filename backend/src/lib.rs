@@ -443,7 +443,7 @@ pub fn run() {
             }
 
             // Register global shortcuts
-            shortcuts::register_shortcuts(&app.handle())?;
+            shortcuts::register_shortcuts(app.handle())?;
 
             // First-run onboarding: auto-open settings if no API key is configured
             let store = app.store("settings.json").map_err(|e| e.to_string())?;
