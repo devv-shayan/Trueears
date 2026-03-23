@@ -504,10 +504,7 @@ fn build_file_index(root: &Path) -> HashMap<String, Vec<String>> {
     );
     let mut map: HashMap<String, Vec<String>> = HashMap::new();
 
-    for entry in WalkDir::new(root)
-        .into_iter()
-        .filter_entry(should_traverse)
-    {
+    for entry in WalkDir::new(root).into_iter().filter_entry(should_traverse) {
         let entry = match entry {
             Ok(e) => e,
             Err(_) => continue,

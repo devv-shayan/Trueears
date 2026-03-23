@@ -49,6 +49,7 @@ export default [
         requestAnimationFrame: 'readonly',
         cancelAnimationFrame: 'readonly',
         DOMException: 'readonly',
+        CustomEvent: 'readonly',
         // DOM
         HTMLElement: 'readonly',
         HTMLCanvasElement: 'readonly',
