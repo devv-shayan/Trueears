@@ -44,9 +44,13 @@ jobs:
       - name: Generate changelog
         if: steps.check_tag.outputs.should_release == 'true'
         id: changelog
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
           TAG="${{ steps.get_version.outputs.tag }}"
-          PREV_TAG=$(git describe --tags --abbrev=0 2>/dev/null || true)
+          
+          # Fetch the latest stable release tag using GitHub CLI
+          PREV_TAG=$(gh release view --json tagName --jq .tagName 2>/dev/null || true)
 
           if [ -n "$PREV_TAG" ]; then
             RANGE="${PREV_TAG}..HEAD"
