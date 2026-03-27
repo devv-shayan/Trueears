@@ -90,10 +90,10 @@ fn get_auth_file_path<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> Result<Pa
 }
 
 /// Migrate legacy auth storage from the old `Trueears` folder into `com.Trueears`
-pub fn migrate_legacy_auth_file<R: tauri::Runtime>(app: &tauri::AppHandle<R>) {
+pub fn migrate_legacy_auth_file<R: tauri::Runtime>(_app: &tauri::AppHandle<R>) {
     #[cfg(target_os = "windows")]
     {
-        let new_path = match get_auth_file_path(app) {
+        let new_path = match get_auth_file_path(_app) {
             Ok(path) => path,
             Err(err) => {
                 log::warn!(
