@@ -1,9 +1,8 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import 'flag-icons/css/flag-icons.min.css';
 import { CustomSelect } from '../CustomSelect';
 import { GROQ_MODELS } from '../../hooks/useSettings';
 import { openUrl } from '@tauri-apps/plugin-opener';
-import { WHISPER_LANGUAGES, getLanguageByCode } from '../../types/languages';
+import { WHISPER_LANGUAGES, getFlagEmoji, getLanguageByCode } from '../../types/languages';
 
 interface TranscriptionSettingsProps {
   apiKey: string;
@@ -255,7 +254,7 @@ export const TranscriptionSettings: React.FC<TranscriptionSettingsProps> = ({
                 <span className="text-sm text-gray-400 italic flex items-center gap-2">🌐 Auto-detect enabled</span>
               ) : selectedLang ? (
                 <span className={`flex items-center gap-2 px-2 py-1 bg-emerald-500/10 border border-emerald-500/30 rounded text-sm ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>
-                  <span className={`fi fi-${selectedLang.countryCode.toLowerCase()}`}></span> {selectedLang.name}
+                  <span aria-hidden="true">{getFlagEmoji(selectedLang.countryCode)}</span> {selectedLang.name}
                 </span>
               ) : null}
             </div>
@@ -336,7 +335,7 @@ export const TranscriptionSettings: React.FC<TranscriptionSettingsProps> = ({
                           : isDark ? 'bg-transparent border border-transparent hover:bg-[#252525] text-gray-400' : 'bg-transparent border border-transparent hover:bg-gray-50 text-gray-600'
                           }`}
                       >
-                        <span className={`fi fi-${lang.countryCode.toLowerCase()}`}></span>
+                        <span aria-hidden="true">{getFlagEmoji(lang.countryCode)}</span>
                         <span className="text-sm truncate">{lang.name}</span>
                       </button>
                     );

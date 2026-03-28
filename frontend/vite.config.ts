@@ -3,12 +3,18 @@ import { defineConfig, loadEnv } from 'vite';
 import react from '@vitejs/plugin-react';
 import { readFileSync } from 'fs';
 
+const workspaceRoot = path.resolve(__dirname, '..');
+
 // Read version from package.json
-const packageJson = JSON.parse(readFileSync('../package.json', 'utf-8'));
+const packageJson = JSON.parse(
+  readFileSync(path.resolve(workspaceRoot, 'package.json'), 'utf-8')
+);
 
 export default defineConfig(({ mode }) => {
-  const env = loadEnv(mode, '..', '');
+  const env = loadEnv(mode, workspaceRoot, '');
   const host = process.env.TAURI_DEV_HOST;
+  const isTauriDebug = process.env.TAURI_ENV_DEBUG === 'true';
+  const tauriPlatform = process.env.TAURI_ENV_PLATFORM;
   const paymentPort = env.PAYMENT_API_PORT || '3002';
   const paymentServiceUrl =
     env.VITE_PAYMENT_SERVICE_URL ||
@@ -30,7 +36,7 @@ export default defineConfig(({ mode }) => {
   return {
     base: './',
     // Load .env from workspace root (single centralized location).
-    envDir: '..',
+    envDir: workspaceRoot,
     // Inject version as a global define
     define: {
       __APP_VERSION__: JSON.stringify(packageJson.version),
@@ -61,7 +67,7 @@ export default defineConfig(({ mode }) => {
       },
     },
     // Env variables starting with the item of `envPrefix` will be exposed in tauri's source code through `import.meta.env`.
-    envPrefix: ['VITE_', 'TAURI_ENV_*'],
+    envPrefix: ['VITE_', 'TAURI_ENV_'],
     plugins: [react()],
     optimizeDeps: {
       exclude: ['@tauri-apps/api', '@tauri-apps/api/*'],
@@ -73,11 +79,11 @@ export default defineConfig(({ mode }) => {
     },
     build: {
       // Tauri uses Chromium on Windows and WebKit on macOS and Linux
-      target: process.env.TAURI_ENV_PLATFORM == 'windows' ? 'chrome105' : 'safari13',
-      // don't minify for debug builds
-      minify: !process.env.TAURI_ENV_DEBUG ? 'esbuild' : false,
+      target: tauriPlatform === 'windows' ? 'chrome105' : 'safari13',
+      // Let Vite 8 use its default minifier in release builds; keep debug builds unminified.
+      minify: isTauriDebug ? false : undefined,
       // produce sourcemaps for debug builds
-      sourcemap: !!process.env.TAURI_ENV_DEBUG,
+      sourcemap: isTauriDebug,
       rollupOptions: {
         input: {
           main: path.resolve(__dirname, 'index.html'),

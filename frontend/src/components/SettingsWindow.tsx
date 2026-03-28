@@ -1,4 +1,4 @@
-import React, { Suspense, lazy, startTransition, useState, useEffect } from 'react';
+import React, { Suspense, lazy, startTransition, useState, useEffect, useEffectEvent } from 'react';
 import { TranscriptionSettings } from './settings/TranscriptionSettings';
 import { OnboardingWizard } from './onboarding/OnboardingWizard';
 import { useSettings } from '../hooks/useSettings';
@@ -109,7 +109,7 @@ export const SettingsWindow: React.FC = () => {
     };
   }, [onboardingComplete]);
 
-  const handleClose = async () => {
+  const handleClose = useEffectEvent(async () => {
     try {
       const window = getCurrentWindow();
       console.log('[SettingsWindow] Closing window');
@@ -117,7 +117,7 @@ export const SettingsWindow: React.FC = () => {
     } catch (error) {
       console.error('[SettingsWindow] Failed to close window:', error);
     }
-  };
+  });
 
   // Handle keyboard shortcuts
   useEffect(() => {
@@ -125,7 +125,7 @@ export const SettingsWindow: React.FC = () => {
       // Ctrl+Shift+L to close (toggle behavior)
       if (e.ctrlKey && e.shiftKey && e.key === 'L') {
         e.preventDefault();
-        handleClose();
+        void handleClose();
       }
     };
 
@@ -191,6 +191,62 @@ export const SettingsWindow: React.FC = () => {
 
   console.log('[SettingsWindow] Rendering main settings UI');
   const isDark = settings.theme === 'dark';
+
+  const renderActiveTabPanel = () => {
+    switch (activeTab) {
+      case 'transcription':
+        return (
+          <TranscriptionSettings
+            apiKey={settings.apiKey}
+            model={settings.model}
+            saveKey={settings.saveApiKey}
+            saveModel={settings.saveGroqModel}
+            onboardingComplete={settings.onboardingComplete}
+            markOnboardingComplete={settings.markOnboardingComplete}
+            language={settings.language}
+            autoDetectLanguage={settings.autoDetectLanguage}
+            saveLanguage={settings.saveLanguage}
+            saveAutoDetectLanguage={settings.saveAutoDetectLanguage}
+            theme={settings.theme}
+            microphoneId={settings.microphoneId}
+            saveMicrophoneId={settings.saveMicrophoneId}
+          />
+        );
+      case 'llm':
+        return <LLMSettings {...settings} theme={settings.theme} />;
+      case 'profiles':
+        return <AppProfilesSettings theme={settings.theme} />;
+      case 'logmode':
+        return <LogModeSettings isDark={isDark} />;
+      case 'preferences':
+        return (
+          <PreferencesSettings
+            theme={settings.theme}
+            saveTheme={settings.saveTheme}
+            recordingMode={settings.recordingMode}
+            saveRecordingMode={settings.saveRecordingMode}
+          />
+        );
+      case 'account':
+        return (
+          <AccountSection
+            theme={settings.theme}
+            isAuthenticated={auth.isAuthenticated}
+            isLoading={auth.isLoading}
+            user={auth.user}
+            login={auth.login}
+            logout={auth.logout}
+            refreshAuthState={auth.refreshAuthState}
+          />
+        );
+      case 'legal':
+        return <LegalPrivacySettings theme={settings.theme} />;
+      case 'about':
+        return <AboutSettings theme={settings.theme} />;
+      default:
+        return null;
+    }
+  };
 
   return (
     <div
@@ -398,49 +454,7 @@ export const SettingsWindow: React.FC = () => {
 
       {/* Right Content Area */}
       <div className="flex-1 overflow-y-auto">
-        <Suspense fallback={tabPanelFallback}>
-          {activeTab === 'transcription' && (
-            <TranscriptionSettings
-              apiKey={settings.apiKey}
-              model={settings.model}
-              saveKey={settings.saveApiKey}
-              saveModel={settings.saveGroqModel}
-              onboardingComplete={settings.onboardingComplete}
-              markOnboardingComplete={settings.markOnboardingComplete}
-              language={settings.language}
-              autoDetectLanguage={settings.autoDetectLanguage}
-              saveLanguage={settings.saveLanguage}
-              saveAutoDetectLanguage={settings.saveAutoDetectLanguage}
-              theme={settings.theme}
-              microphoneId={settings.microphoneId}
-              saveMicrophoneId={settings.saveMicrophoneId}
-            />
-          )}
-          {activeTab === 'llm' && <LLMSettings {...settings} theme={settings.theme} />}
-          {activeTab === 'profiles' && <AppProfilesSettings theme={settings.theme} />}
-          {activeTab === 'logmode' && <LogModeSettings isDark={isDark} />}
-          {activeTab === 'preferences' && (
-            <PreferencesSettings
-              theme={settings.theme}
-              saveTheme={settings.saveTheme}
-              recordingMode={settings.recordingMode}
-              saveRecordingMode={settings.saveRecordingMode}
-            />
-          )}
-          {activeTab === 'account' && (
-            <AccountSection
-              theme={settings.theme}
-              isAuthenticated={auth.isAuthenticated}
-              isLoading={auth.isLoading}
-              user={auth.user}
-              login={auth.login}
-              logout={auth.logout}
-              refreshAuthState={auth.refreshAuthState}
-            />
-          )}
-          {activeTab === 'legal' && <LegalPrivacySettings theme={settings.theme} />}
-          {activeTab === 'about' && <AboutSettings theme={settings.theme} />}
-        </Suspense>
+        <Suspense fallback={tabPanelFallback}>{renderActiveTabPanel()}</Suspense>
       </div>
     </div>
   );

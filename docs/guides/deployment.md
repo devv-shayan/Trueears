@@ -4,7 +4,7 @@ Build Trueears for production distribution.
 
 ## Prerequisites
 
-- Node.js v18+
+- Node.js 20.19+ (or 22.12+)
 - Rust (latest stable)
 - Visual Studio Build Tools (Windows)
 

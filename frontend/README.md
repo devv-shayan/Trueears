@@ -7,7 +7,7 @@ React TypeScript frontend for Trueears dictation application.
 - React 19
 - TypeScript 5.8+ (strict mode)
 - TailwindCSS 4
-- Vite 6
+- Vite 8
 
 ## Structure
 
