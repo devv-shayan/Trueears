@@ -2,6 +2,8 @@ import { AppProfile, ActiveWindowInfo, DEFAULT_APP_PROFILES, DEFAULT_SYSTEM_PROM
 import { tauriAPI } from '../utils/tauriApi';
 
 const STORAGE_KEY = 'Trueears_APP_PROFILES';
+const STORAGE_SCHEMA_VERSION_KEY = 'Trueears_APP_PROFILES_SCHEMA_VERSION';
+const STORAGE_SCHEMA_VERSION = '1';
 
 type ProfilesListener = (profiles: AppProfile[]) => void;
 
@@ -56,8 +58,10 @@ function readProfilesFromLocalStorage(): AppProfile[] {
       if (Array.isArray(parsed) && parsed.length !== valid.length) {
         localStorage.setItem(STORAGE_KEY, JSON.stringify(valid));
       }
+      localStorage.setItem(STORAGE_SCHEMA_VERSION_KEY, STORAGE_SCHEMA_VERSION);
     } catch {
       localStorage.removeItem(STORAGE_KEY);
+      localStorage.removeItem(STORAGE_SCHEMA_VERSION_KEY);
     }
   }
   return valid;
@@ -67,6 +71,7 @@ function writeProfilesToLocalStorage(profiles: AppProfile[]): void {
   cachedProfiles = profiles;
   cacheInitialized = true;
   localStorage.setItem(STORAGE_KEY, JSON.stringify(profiles));
+  localStorage.setItem(STORAGE_SCHEMA_VERSION_KEY, STORAGE_SCHEMA_VERSION);
 }
 
 function notifyListeners(): void {
@@ -128,7 +133,10 @@ export class AppProfileService {
         // Persist to Tauri store (durable + cross-window)
         void tauriAPI.setStoreValue(STORAGE_KEY, JSON.stringify(toSave));
         // Do not persist profiles in localStorage in production (can be per-window / confusing)
-        try { localStorage.removeItem(STORAGE_KEY); } catch {}
+        try {
+          localStorage.removeItem(STORAGE_KEY);
+          localStorage.removeItem(STORAGE_SCHEMA_VERSION_KEY);
+        } catch {}
       } else {
         // Browser/dev fallback
         writeProfilesToLocalStorage(toSave);
@@ -304,6 +312,7 @@ export class AppProfileService {
     cachedProfiles = [];
     cacheInitialized = true;
     localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(STORAGE_SCHEMA_VERSION_KEY);
     // Best-effort: clear store value as well
     void tauriAPI.setStoreValue(STORAGE_KEY, '');
     notifyListeners();
@@ -365,7 +374,10 @@ export class AppProfileService {
             cacheInitialized = true;
             notifyListeners();
             // Remove any legacy localStorage copy so users see a single source of truth.
-            try { localStorage.removeItem(STORAGE_KEY); } catch {}
+            try {
+              localStorage.removeItem(STORAGE_KEY);
+              localStorage.removeItem(STORAGE_SCHEMA_VERSION_KEY);
+            } catch {}
             return;
           }
         } catch {
@@ -387,7 +399,10 @@ export class AppProfileService {
           await tauriAPI.setStoreValue(STORAGE_KEY, '[]');
         }
 
-        try { localStorage.removeItem(STORAGE_KEY); } catch {}
+        try {
+          localStorage.removeItem(STORAGE_KEY);
+          localStorage.removeItem(STORAGE_SCHEMA_VERSION_KEY);
+        } catch {}
       }
     } catch (e) {
       console.warn('[AppProfileService] Failed to refresh profiles from store:', e);

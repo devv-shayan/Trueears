@@ -8,7 +8,7 @@ This guide covers local setup, daily development workflow, and troubleshooting f
 
 | Tool | Version | Purpose |
 |------|---------|---------|
-| Node.js | 20+ | Frontend build, npm scripts |
+| Node.js | 20.19+ or 22.12+ | Frontend build, npm scripts |
 | npm | (bundled with Node) | Package management |
 | Rust | 1.77+ | Backend compilation |
 | Tauri CLI | 2.x | Installed via `@tauri-apps/cli` devDependency |

@@ -23,7 +23,7 @@ A minimalist, context-aware AI voice dictation application built with Tauri, Rea
 ## Quick Start
 
 ```bash
-# Prerequisites: Node.js v18+, Rust, Groq API Key
+# Prerequisites: Node.js 20.19+ (or 22.12+), Rust, Groq API Key
 
 git clone <repository-url>
 cd Trueears

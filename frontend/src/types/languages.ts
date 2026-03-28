@@ -1,7 +1,7 @@
 export interface Language {
   code: string;
   name: string;
-  countryCode: string; // ISO 3166-1 alpha-2 for react-flagpack
+  countryCode: string; // ISO 3166-1 alpha-2
 }
 
 export const WHISPER_LANGUAGES: Language[] = [
@@ -109,4 +109,16 @@ export const WHISPER_LANGUAGES: Language[] = [
 
 export const getLanguageByCode = (code: string): Language | undefined => {
   return WHISPER_LANGUAGES.find(lang => lang.code === code);
+};
+
+export const getFlagEmoji = (countryCode: string): string => {
+  const normalized = countryCode.trim().toUpperCase();
+  if (!/^[A-Z]{2}$/.test(normalized)) {
+    return '🌐';
+  }
+
+  return normalized
+    .split('')
+    .map((char) => String.fromCodePoint(127397 + char.charCodeAt(0)))
+    .join('');
 };

@@ -49,7 +49,7 @@ Trueears is a desktop AI dictation application built with Tauri v2. It captures 
 | Framework | React 19 |
 | Language | TypeScript 5.8+ |
 | Styling | TailwindCSS 4, PostCSS |
-| Bundler | Vite 6 |
+| Bundler | Vite 8 |
 | Tauri Bridge | `@tauri-apps/api` v2, plugin packages |
 
 ### Key directories (`frontend/src/`)

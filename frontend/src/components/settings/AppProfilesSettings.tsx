@@ -1,11 +1,10 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import 'flag-icons/css/flag-icons.min.css';
 import { AppProfile } from '../../types/appProfile';
 import { AppProfileService } from '../../services/appProfileService';
 import { tauriAPI } from '../../utils/tauriApi';
 import { POPULAR_APPS, PopularApp, BrowserVariant } from '../../data/popularApps';
 import { invoke } from '@tauri-apps/api/core';
-import { WHISPER_LANGUAGES, getLanguageByCode } from '../../types/languages';
+import { WHISPER_LANGUAGES, getFlagEmoji, getLanguageByCode } from '../../types/languages';
 import { useSettings } from '../../hooks/useSettings';
 
 interface AppProfilesSettingsProps {
@@ -192,7 +191,7 @@ const BrowserSetupModal = ({
               placeholder="e.g., mail.google.com or https://web.whatsapp.com"
               autoFocus
             />
-            {error && <p className="text-rose-500 text-xs mt-1">{error}</p>}
+            {error ? <p className="text-rose-500 text-xs mt-1">{error}</p> : null}
             <p className={`text-xs mt-1.5 ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>
               This will match against the active tab URL (best-effort)
             </p>
@@ -280,7 +279,7 @@ const BrowserAppSetupModal = ({
             onChange={e => { setWebsiteKeyword(e.target.value); setError(''); }}
             placeholder="e.g., Gmail, WhatsApp, YouTube"
           />
-          {error && <p className="text-rose-500 text-xs mt-1">{error}</p>}
+          {error ? <p className="text-rose-500 text-xs mt-1">{error}</p> : null}
           <p className={`text-xs mt-1.5 ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>
             This keyword will be matched against the browser tab title
           </p>
@@ -580,7 +579,9 @@ const ProfileModal = ({
                     onChange={e => { setFormData({ ...formData, displayName: e.target.value }); setErrors({ ...errors, displayName: undefined }); }}
                     placeholder="e.g. My Special App"
                   />
-                  {errors.displayName && <p className="text-rose-500 text-xs mt-1">{errors.displayName}</p>}
+                  {errors.displayName ? (
+                    <p className="text-rose-500 text-xs mt-1">{errors.displayName}</p>
+                  ) : null}
                 </div>
 
                 <div>
@@ -594,8 +595,12 @@ const ProfileModal = ({
                     onChange={e => { setFormData({ ...formData, appName: e.target.value }); setErrors({ ...errors, appName: undefined, websiteUrl: undefined, duplicate: undefined }); }}
                     placeholder="e.g., cursor.exe"
                   />
-                  {errors.appName && <p className="text-rose-500 text-xs mt-1">{errors.appName}</p>}
-                  {errors.duplicate && <p className="text-rose-500 text-xs mt-1">{errors.duplicate}</p>}
+                  {errors.appName ? (
+                    <p className="text-rose-500 text-xs mt-1">{errors.appName}</p>
+                  ) : null}
+                  {errors.duplicate ? (
+                    <p className="text-rose-500 text-xs mt-1">{errors.duplicate}</p>
+                  ) : null}
                   <p className={`text-xs mt-1.5 ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>The .exe file name of your application</p>
                   {alreadyUsedCount > 0 && (
                     <p className={`text-xs mt-1.5 ${isDark ? 'text-amber-400' : 'text-amber-700'}`}>
@@ -619,7 +624,9 @@ const ProfileModal = ({
                       onChange={e => { setFormData({ ...formData, websiteUrl: e.target.value }); setErrors({ ...errors, websiteUrl: undefined, duplicate: undefined }); }}
                       placeholder="e.g., mail.google.com or https://web.whatsapp.com"
                     />
-                    {errors.websiteUrl && <p className="text-rose-500 text-xs mt-1">{errors.websiteUrl}</p>}
+                    {errors.websiteUrl ? (
+                      <p className="text-rose-500 text-xs mt-1">{errors.websiteUrl}</p>
+                    ) : null}
                     <p className={`text-xs mt-1.5 ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>Matched against the active tab URL (best-effort)</p>
                   </div>
                 )}
@@ -645,13 +652,13 @@ const ProfileModal = ({
                     <div className={`flex-1 flex items-center gap-2 border rounded-lg p-3 min-h-12 ${isDark ? 'bg-[#1a1a1a] border-[#333]' : 'bg-white border-gray-300'}`}>
                       {selectedLang ? (
                         <span className={`flex items-center gap-2 px-2 py-1 bg-emerald-500/10 border border-emerald-500/30 rounded text-sm ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>
-                          <span className={`fi fi-${selectedLang.countryCode.toLowerCase()}`}></span> {selectedLang.name}
+                          <span aria-hidden="true">{getFlagEmoji(selectedLang.countryCode)}</span> {selectedLang.name}
                         </span>
                       ) : globalAutoDetect ? (
                         <span className="text-sm text-gray-400 italic flex items-center gap-2">🌐 Default (Auto-detect)</span>
                       ) : globalLang ? (
                         <span className="text-sm text-gray-400 flex items-center gap-2">
-                          <span className={`fi fi-${globalLang.countryCode.toLowerCase()}`}></span>
+                          <span aria-hidden="true">{getFlagEmoji(globalLang.countryCode)}</span>
                           <span className="italic">Default ({globalLang.name})</span>
                         </span>
                       ) : (
@@ -747,7 +754,7 @@ const ProfileModal = ({
                             : isDark ? 'bg-transparent border border-transparent hover:bg-[#252525] text-gray-400' : 'bg-transparent border border-transparent hover:bg-gray-50 text-gray-600'
                         }`}
                       >
-                        <span className={`fi fi-${lang.countryCode.toLowerCase()}`}></span>
+                        <span aria-hidden="true">{getFlagEmoji(lang.countryCode)}</span>
                         <span className="text-sm truncate">{lang.name}</span>
                       </button>
                     );

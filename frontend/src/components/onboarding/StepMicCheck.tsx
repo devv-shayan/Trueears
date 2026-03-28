@@ -58,7 +58,9 @@ const MicCheckVisual: React.FC = () => {
         <h3 className="text-lg font-bold mb-4">Do you see moving bars?</h3>
 
         <div className="h-16 bg-white rounded-lg flex items-center justify-center mb-6 overflow-hidden">
-          {stream && <AudioVisualizer stream={stream} isRecording={true} barColor="#000000" />}
+          {stream ? (
+            <AudioVisualizer stream={stream} isRecording={true} barColor="#000000" />
+          ) : null}
         </div>
 
         <div className="flex gap-3">

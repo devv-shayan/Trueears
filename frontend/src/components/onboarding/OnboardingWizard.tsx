@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { StepConnect } from './StepConnect';
 import { StepLanguage } from './StepLanguage';
 import { StepPermissions } from './StepPermissions';
@@ -9,7 +9,15 @@ import { StepSignIn } from './StepSignIn';
 import { StepSuccess } from './StepSuccess';
 import { useSettings } from '../../hooks/useSettings';
 
-type Step = 'signin' | 'connect' | 'language' | 'permissions' | 'mic-check' | 'trigger' | 'tutorial' | 'success';
+type Step =
+  | 'signin'
+  | 'connect'
+  | 'language'
+  | 'permissions'
+  | 'mic-check'
+  | 'trigger'
+  | 'tutorial'
+  | 'success';
 
 export interface OnboardingWizardProps {
   initialStep?: Step;
@@ -17,17 +25,41 @@ export interface OnboardingWizardProps {
 
 export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ initialStep = 'signin' }) => {
   const [currentStep, setCurrentStep] = useState<Step>(initialStep);
+  const [triggerActiveKeys, setTriggerActiveKeys] = useState<Set<string>>(() => new Set());
+  const [triggerSuccess, setTriggerSuccess] = useState(false);
+  const [tutorialActiveTab, setTutorialActiveTab] = useState(0);
   const { markOnboardingComplete } = useSettings();
 
-  const steps: Step[] = ['signin', 'connect', 'language', 'permissions', 'mic-check', 'trigger', 'tutorial', 'success'];
+  const steps: Step[] = [
+    'signin',
+    'connect',
+    'language',
+    'permissions',
+    'mic-check',
+    'trigger',
+    'tutorial',
+    'success',
+  ];
   const currentIndex = steps.indexOf(currentStep);
+
+  useEffect(() => {
+    if (currentStep === 'trigger') {
+      setTriggerActiveKeys(new Set());
+      setTriggerSuccess(false);
+    }
+
+    if (currentStep === 'tutorial') {
+      setTutorialActiveTab(0);
+    }
+  }, [currentStep]);
 
   const handleNext = () => {
     if (currentIndex < steps.length - 1) {
       setCurrentStep(steps[currentIndex + 1]);
-    } else {
-      handleFinish();
+      return;
     }
+
+    handleFinish();
   };
 
   const handlePrev = () => {
@@ -41,7 +73,6 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ initialStep 
     window.location.reload();
   };
 
-  // Progress bar logic (Success step hides progress bar)
   const progressSteps = [
     { id: 'signin', label: 'Account' },
     { id: 'connect', label: 'Connect' },
@@ -49,7 +80,7 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ initialStep 
     { id: 'permissions', label: 'Permissions' },
     { id: 'mic-check', label: 'Microphone' },
     { id: 'trigger', label: 'Shortcut' },
-    { id: 'tutorial', label: 'Tutorial' }
+    { id: 'tutorial', label: 'Tutorial' },
   ];
 
   const getActiveProgressIndex = () => {
@@ -60,76 +91,137 @@ export const OnboardingWizard: React.FC<OnboardingWizardProps> = ({ initialStep 
     if (currentStep === 'mic-check') return 4;
     if (currentStep === 'trigger') return 5;
     if (currentStep === 'tutorial') return 6;
-    return 7; // Success
+    return 7;
+  };
+
+  const renderStepContent = () => {
+    switch (currentStep) {
+      case 'connect':
+        return <StepConnect onNext={handleNext} />;
+      case 'language':
+        return <StepLanguage onNext={handleNext} onPrev={handlePrev} />;
+      case 'permissions':
+        return <StepPermissions onNext={handleNext} onPrev={handlePrev} />;
+      case 'mic-check':
+        return <StepMicCheck onNext={handleNext} onPrev={handlePrev} />;
+      case 'trigger':
+        return (
+          <StepTrigger
+            onNext={handleNext}
+            onPrev={handlePrev}
+            setActiveKeys={setTriggerActiveKeys}
+            success={triggerSuccess}
+            setSuccess={setTriggerSuccess}
+          />
+        );
+      case 'tutorial':
+        return (
+          <StepTutorial
+            onNext={handleNext}
+            onPrev={handlePrev}
+            activeTab={tutorialActiveTab}
+            onTabChange={setTutorialActiveTab}
+          />
+        );
+      case 'signin':
+        return <StepSignIn onNext={handleNext} onPrev={handlePrev} />;
+      default:
+        return null;
+    }
+  };
+
+  const renderStepVisual = () => {
+    switch (currentStep) {
+      case 'connect':
+        return <StepConnect.Visual />;
+      case 'language':
+        return <StepLanguage.Visual />;
+      case 'permissions':
+        return <StepPermissions.Visual />;
+      case 'mic-check':
+        return <StepMicCheck.Visual />;
+      case 'trigger':
+        return <StepTrigger.Visual activeKeys={triggerActiveKeys} />;
+      case 'tutorial':
+        return (
+          <StepTutorial.Visual
+            activeTab={tutorialActiveTab}
+            onTabChange={setTutorialActiveTab}
+          />
+        );
+      case 'signin':
+        return <StepSignIn.Visual />;
+      default:
+        return null;
+    }
   };
 
   const activeProgressIndex = getActiveProgressIndex();
 
   return (
     <div className="flex items-center justify-center min-h-screen bg-white text-gray-800 font-sans overflow-hidden p-8">
-      {/* Main Modal Container */}
       <div className="relative w-[960px] h-[640px] bg-[#f8fafc] border border-gray-200 rounded-3xl shadow-[0_0_120px_-30px_rgba(16,185,129,0.05)] flex overflow-hidden">
-
         {currentStep === 'success' ? (
           <StepSuccess onNext={handleFinish} />
         ) : (
           <>
-            {/* Left Panel - Interactive */}
             <div className="w-[42%] p-12 flex flex-col border-r border-gray-100 bg-white relative z-10">
-
-              {/* Progress Header */}
               <div className="flex items-center w-full justify-between mb-12">
-                {progressSteps.map((step, idx) => {
-                  const isActive = idx === activeProgressIndex;
-                  const isCompleted = idx < activeProgressIndex;
+                {progressSteps.map((step, index) => {
+                  const isActive = index === activeProgressIndex;
+                  const isCompleted = index < activeProgressIndex;
 
                   return (
                     <React.Fragment key={step.id}>
-                      <div className={`flex items-center gap-2 transition-colors duration-300 ${isActive ? 'text-gray-900' : isCompleted ? 'text-emerald-600' : 'text-gray-400'}`}>
-                        <div className={`w-1.5 h-1.5 rounded-full bg-current ${isActive ? 'shadow-[0_0_0_3px_rgba(16,185,129,0.2)] bg-emerald-500' : ''}`} />
-                        {isActive && (
-                          <span className="text-[10px] font-bold uppercase tracking-widest">{step.label}</span>
-                        )}
+                      <div
+                        className={`flex items-center gap-2 transition-colors duration-300 ${
+                          isActive
+                            ? 'text-gray-900'
+                            : isCompleted
+                              ? 'text-emerald-600'
+                              : 'text-gray-400'
+                        }`}
+                      >
+                        <div
+                          className={`w-1.5 h-1.5 rounded-full bg-current ${
+                            isActive
+                              ? 'shadow-[0_0_0_3px_rgba(16,185,129,0.2)] bg-emerald-500'
+                              : ''
+                          }`}
+                        />
+                        {isActive ? (
+                          <span className="text-[10px] font-bold uppercase tracking-widest">
+                            {step.label}
+                          </span>
+                        ) : null}
                       </div>
-                      {idx < progressSteps.length - 1 && (
-                        <div className={`h-px flex-1 mx-2 ${idx < activeProgressIndex ? 'bg-emerald-500/30' : 'bg-gray-200'}`} />
-                      )}
+                      {index < progressSteps.length - 1 ? (
+                        <div
+                          className={`h-px flex-1 mx-2 ${
+                            index < activeProgressIndex ? 'bg-emerald-500/30' : 'bg-gray-200'
+                          }`}
+                        />
+                      ) : null}
                     </React.Fragment>
                   );
                 })}
               </div>
 
-              {/* Step Content */}
-              <div className="flex-1 flex flex-col relative">
-                {currentStep === 'connect' && <StepConnect onNext={handleNext} />}
-                {currentStep === 'language' && <StepLanguage onNext={handleNext} onPrev={handlePrev} />}
-                {currentStep === 'permissions' && <StepPermissions onNext={handleNext} onPrev={handlePrev} />}
-                {currentStep === 'mic-check' && <StepMicCheck onNext={handleNext} onPrev={handlePrev} />}
-                {currentStep === 'trigger' && <StepTrigger onNext={handleNext} onPrev={handlePrev} />}
-                {currentStep === 'tutorial' && <StepTutorial onNext={handleNext} onPrev={handlePrev} />}
-                {currentStep === 'signin' && <StepSignIn onNext={handleNext} onPrev={handlePrev} />}
-              </div>
-
+              <div className="flex-1 flex flex-col relative">{renderStepContent()}</div>
             </div>
 
-            {/* Right Panel - Visuals */}
             <div className="w-[58%] bg-[#f8fafc] relative overflow-hidden flex items-center justify-center">
-              <div className="absolute inset-0 opacity-40 pointer-events-none"
+              <div
+                className="absolute inset-0 opacity-40 pointer-events-none"
                 style={{
                   backgroundImage: 'radial-gradient(rgba(52, 211, 153, 0.15) 1px, transparent 1px)',
                   backgroundSize: '40px 40px',
-                  maskImage: 'radial-gradient(circle at center, black 30%, transparent 80%)'
+                  maskImage: 'radial-gradient(circle at center, black 30%, transparent 80%)',
                 }}
               />
 
               <div className="relative w-full h-full flex items-center justify-center p-12">
-                {currentStep === 'connect' && <StepConnect.Visual />}
-                {currentStep === 'language' && <StepLanguage.Visual />}
-                {currentStep === 'permissions' && <StepPermissions.Visual />}
-                {currentStep === 'mic-check' && <StepMicCheck.Visual />}
-                {currentStep === 'trigger' && <StepTrigger.Visual />}
-                {currentStep === 'tutorial' && <StepTutorial.Visual />}
-                {currentStep === 'signin' && <StepSignIn.Visual />}
+                {renderStepVisual()}
               </div>
             </div>
           </>
