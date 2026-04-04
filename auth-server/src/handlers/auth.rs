@@ -41,11 +41,55 @@ pub async fn google_auth(
         })?;
 
     // 2. Decode and validate the ID token
-    let claims = decode_id_token(&google_tokens.id_token, &state.config.google_client_id)
+    let mut claims = decode_id_token(&google_tokens.id_token, &state.config.google_client_id)
         .map_err(|e| {
             tracing::error!("Failed to decode ID token: {}", e);
             (StatusCode::BAD_REQUEST, format!("Invalid ID token: {}", e))
         })?;
+
+    // Some Google accounts omit optional profile fields in the ID token.
+    // Fetch userinfo as a fallback so we reliably persist picture/name.
+    let needs_userinfo_fallback = claims
+        .picture
+        .as_deref()
+        .map(|v| v.trim().is_empty())
+        .unwrap_or(true)
+        || claims
+            .name
+            .as_deref()
+            .map(|v| v.trim().is_empty())
+            .unwrap_or(true);
+
+    if needs_userinfo_fallback {
+        match fetch_google_user_info(&google_tokens.access_token).await {
+            Ok(user_info) => {
+                if claims
+                    .name
+                    .as_deref()
+                    .map(|v| v.trim().is_empty())
+                    .unwrap_or(true)
+                {
+                    if let Some(name) = user_info.name.filter(|v| !v.trim().is_empty()) {
+                        claims.name = Some(name);
+                    }
+                }
+
+                if claims
+                    .picture
+                    .as_deref()
+                    .map(|v| v.trim().is_empty())
+                    .unwrap_or(true)
+                {
+                    if let Some(picture) = user_info.picture.filter(|v| !v.trim().is_empty()) {
+                        claims.picture = Some(picture);
+                    }
+                }
+            }
+            Err(err) => {
+                tracing::warn!("Failed to fetch Google user info fallback: {}", err);
+            }
+        }
+    }
 
     tracing::info!("Google auth for user: {}", claims.email);
 
@@ -243,6 +287,39 @@ async fn exchange_code_for_tokens(
         .json::<GoogleTokenResponse>()
         .await
         .map_err(|e| format!("Failed to parse response: {}", e))
+}
+
+#[derive(Debug, serde::Deserialize)]
+struct GoogleUserInfoResponse {
+    #[serde(default)]
+    name: Option<String>,
+    #[serde(default)]
+    picture: Option<String>,
+}
+
+async fn fetch_google_user_info(access_token: &str) -> Result<GoogleUserInfoResponse, String> {
+    let client = reqwest::Client::new();
+
+    let response = client
+        .get("https://openidconnect.googleapis.com/v1/userinfo")
+        .bearer_auth(access_token)
+        .send()
+        .await
+        .map_err(|e| format!("Google userinfo request failed: {}", e))?;
+
+    if !response.status().is_success() {
+        let status = response.status();
+        let error_text = response.text().await.unwrap_or_default();
+        return Err(format!(
+            "Google userinfo request failed with {}: {}",
+            status, error_text
+        ));
+    }
+
+    response
+        .json::<GoogleUserInfoResponse>()
+        .await
+        .map_err(|e| format!("Failed to parse Google userinfo response: {}", e))
 }
 
 /// Decode Google's ID token (JWT) to extract user claims

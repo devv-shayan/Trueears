@@ -8,13 +8,11 @@ use std::fs;
 use std::path::{Path, PathBuf};
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
-use std::sync::Once;
 use std::thread;
 use tauri::{Emitter, Manager};
 
 // File storage for auth data (more reliable than keyring on Windows)
 const AUTH_FILE_NAME: &str = "auth.json";
-static RUNTIME_ENV_LOADED: Once = Once::new();
 
 /// User info stored in auth file
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -58,17 +56,73 @@ pub struct OAuthConfig {
 }
 
 impl OAuthConfig {
-    pub fn from_app<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> Option<Self> {
+    pub fn from_app<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> Result<Self, String> {
         load_runtime_env(app);
-        let google_client_id = std::env::var("GOOGLE_CLIENT_ID").ok()?;
+
+        let discovered = discover_env_paths(app);
+
+        let google_client_id = std::env::var("GOOGLE_CLIENT_ID")
+            .ok()
+            .filter(|value| !value.trim().is_empty())
+            .or_else(|| {
+                // Fallback: parse discovered .env files directly in case dotenv loading
+                // silently misses a key in the current runtime context.
+                find_env_value(&discovered, "GOOGLE_CLIENT_ID")
+            })
+            .ok_or_else(|| {
+                let searched = discovered
+                    .iter()
+                    .map(|p| p.to_string_lossy().into_owned())
+                    .collect::<Vec<_>>()
+                    .join(", ");
+                format!(
+                    "Missing GOOGLE_CLIENT_ID environment variable. Checked env paths: {}",
+                    searched
+                )
+            })?;
+
+        // Ensure downstream code can rely on the process env key.
+        std::env::set_var("GOOGLE_CLIENT_ID", &google_client_id);
+
         let api_url = api_url_from_app(app);
 
-        Some(OAuthConfig {
+        Ok(OAuthConfig {
             google_client_id,
             api_url,
             callback_port: 8585,
         })
     }
+}
+
+fn find_env_value(paths: &[PathBuf], key: &str) -> Option<String> {
+    for path in paths {
+        let contents = match fs::read_to_string(path) {
+            Ok(contents) => contents,
+            Err(_) => continue,
+        };
+
+        for raw_line in contents.lines() {
+            let line = raw_line.trim();
+            if line.is_empty() || line.starts_with('#') {
+                continue;
+            }
+
+            let Some((k, v)) = line.split_once('=') else {
+                continue;
+            };
+
+            if k.trim() != key {
+                continue;
+            }
+
+            let value = v.trim().trim_matches('"').to_string();
+            if !value.is_empty() {
+                return Some(value);
+            }
+        }
+    }
+
+    None
 }
 
 fn discover_env_paths<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> Vec<PathBuf> {
@@ -80,6 +134,32 @@ fn discover_env_paths<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> Vec<PathB
 
     let mut paths = Vec::new();
     let mut seen = HashSet::new();
+
+    // Deterministic dev fallback: use compile-time backend path first.
+    // This ensures we can always find workspace root .env during `npm run dev`.
+    let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    if let Some(workspace_root) = manifest_dir.parent() {
+        push_unique(&mut paths, &mut seen, workspace_root.join(".env"));
+        push_unique(
+            &mut paths,
+            &mut seen,
+            workspace_root.join("auth-server").join(".env"),
+        );
+        push_unique(
+            &mut paths,
+            &mut seen,
+            workspace_root.join("frontend").join(".env"),
+        );
+    }
+    push_unique(&mut paths, &mut seen, manifest_dir.join(".env"));
+
+    // Additional runtime fallback based on current directory.
+    if let Ok(cwd) = std::env::current_dir() {
+        push_unique(&mut paths, &mut seen, cwd.join(".env"));
+        if let Some(parent) = cwd.parent() {
+            push_unique(&mut paths, &mut seen, parent.join(".env"));
+        }
+    }
 
     if let Ok(resource_dir) = app.path().resource_dir() {
         let workspace_root = resource_dir.ancestors().find(|ancestor| {
@@ -112,35 +192,33 @@ fn discover_env_paths<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> Vec<PathB
 }
 
 pub fn load_runtime_env<R: tauri::Runtime>(app: &tauri::AppHandle<R>) {
-    RUNTIME_ENV_LOADED.call_once(|| {
-        let mut loaded_any = false;
+    let mut loaded_any = false;
 
-        for path in discover_env_paths(app) {
-            if !path.is_file() {
-                continue;
-            }
-
-            let result = if loaded_any {
-                dotenvy::from_path(&path)
-            } else {
-                dotenvy::from_path_override(&path)
-            };
-
-            match result {
-                Ok(loaded_path) => {
-                    loaded_any = true;
-                    log::info!("Loaded runtime env from {:?}", loaded_path);
-                }
-                Err(err) => {
-                    log::warn!("Failed to load env file {:?}: {}", path, err);
-                }
-            }
+    for path in discover_env_paths(app) {
+        if !path.is_file() {
+            continue;
         }
 
-        if !loaded_any {
-            log::debug!("No runtime env files found via Tauri path discovery");
+        let result = if loaded_any {
+            dotenvy::from_path(&path)
+        } else {
+            dotenvy::from_path_override(&path)
+        };
+
+        match result {
+            Ok(loaded_path) => {
+                loaded_any = true;
+                log::info!("Loaded runtime env from {:?}", loaded_path);
+            }
+            Err(err) => {
+                log::warn!("Failed to load env file {:?}: {}", path, err);
+            }
         }
-    });
+    }
+
+    if !loaded_any {
+        log::debug!("No runtime env files found via Tauri path discovery");
+    }
 }
 
 pub fn api_url_from_app<R: tauri::Runtime>(app: &tauri::AppHandle<R>) -> String {
@@ -604,11 +682,6 @@ fn extract_code_from_url(url: &str) -> Option<String> {
 
 /// Exchange authorization code for tokens via API server
 async fn exchange_code_for_tokens(api_url: &str, code: &str) -> Result<AuthResponse, AppError> {
-    log::info!(
-        "Exchanging code with API server at: {}/auth/google",
-        api_url
-    );
-
     let client = reqwest::Client::new();
 
     #[derive(Serialize)]
@@ -616,36 +689,82 @@ async fn exchange_code_for_tokens(api_url: &str, code: &str) -> Result<AuthRespo
         code: String,
     }
 
-    let response = client
-        .post(format!("{}/auth/google", api_url))
-        .json(&CodeRequest {
-            code: code.to_string(),
-        })
-        .send()
-        .await
-        .map_err(|e| {
-            log::error!("HTTP request failed: {}", e);
-            format!("Request failed: {}", e)
-        })?;
+    let request_body = CodeRequest {
+        code: code.to_string(),
+    };
 
-    log::info!("Response status: {}", response.status());
-
-    if !response.status().is_success() {
-        let error_text = response.text().await.unwrap_or_default();
-        log::error!("Auth failed: {}", error_text);
-        return Err(format!("Authentication failed: {}", error_text).into());
+    let mut endpoints = vec![api_url.trim_end_matches('/').to_string()];
+    if cfg!(debug_assertions) {
+        for local in ["http://127.0.0.1:3001", "http://localhost:3001"] {
+            if !endpoints.iter().any(|url| url.eq_ignore_ascii_case(local)) {
+                endpoints.push(local.to_string());
+            }
+        }
     }
 
-    let auth_response = response.json::<AuthResponse>().await.map_err(|e| {
-        log::error!("Failed to parse response: {}", e);
-        format!("Failed to parse response: {}", e)
-    })?;
+    let mut last_error = String::from("Authentication request failed");
 
-    log::info!(
-        "Successfully got auth response for user: {}",
-        auth_response.user.email
-    );
-    Ok(auth_response)
+    for (idx, endpoint) in endpoints.iter().enumerate() {
+        log::info!(
+            "Exchanging code with API server at: {}/auth/google",
+            endpoint
+        );
+
+        let response = match client
+            .post(format!("{}/auth/google", endpoint))
+            .json(&request_body)
+            .send()
+            .await
+        {
+            Ok(response) => response,
+            Err(e) => {
+                last_error = format!("Request to {} failed: {}", endpoint, e);
+                log::error!("{}", last_error);
+
+                if cfg!(debug_assertions) && idx + 1 < endpoints.len() {
+                    log::warn!(
+                        "Retrying OAuth token exchange with fallback endpoint after request failure"
+                    );
+                    continue;
+                }
+
+                return Err(last_error.into());
+            }
+        };
+
+        let status = response.status();
+        log::info!("Response status from {}: {}", endpoint, status);
+
+        if status.is_success() {
+            let auth_response = response.json::<AuthResponse>().await.map_err(|e| {
+                log::error!("Failed to parse response from {}: {}", endpoint, e);
+                format!("Failed to parse response from {}: {}", endpoint, e)
+            })?;
+
+            log::info!(
+                "Successfully got auth response for user: {}",
+                auth_response.user.email
+            );
+            return Ok(auth_response);
+        }
+
+        let error_text = response.text().await.unwrap_or_default();
+        last_error = format!("Authentication failed via {}: {}", endpoint, error_text);
+        log::error!("{}", last_error);
+
+        let retryable =
+            status.is_server_error() || error_text.contains("FUNCTION_INVOCATION_FAILED");
+        if cfg!(debug_assertions) && retryable && idx + 1 < endpoints.len() {
+            log::warn!(
+                "Retrying OAuth token exchange with local fallback endpoint after server-side error"
+            );
+            continue;
+        }
+
+        return Err(last_error.into());
+    }
+
+    Err(last_error.into())
 }
 
 /// Refresh access token using refresh token

@@ -415,8 +415,7 @@ async fn start_google_login(app: tauri::AppHandle) -> Result<(), AppError> {
     log::info!("start_google_login command called");
 
     // Load config from environment
-    let config =
-        auth::OAuthConfig::from_app(&app).ok_or("Missing GOOGLE_CLIENT_ID environment variable")?;
+    let config = auth::OAuthConfig::from_app(&app)?;
 
     auth::start_google_oauth(app, config).await
 }
@@ -452,6 +451,26 @@ async fn get_access_token(app: tauri::AppHandle) -> Result<Option<String>, AppEr
     log::info!("get_access_token command called");
     let app_handle = app.clone();
     Ok(tauri::async_runtime::spawn_blocking(move || auth::get_access_token(&app_handle)).await?)
+}
+
+#[tauri::command]
+async fn open_external_url(url: String) -> Result<(), AppError> {
+    let target = url.trim();
+    if target.is_empty() {
+        return Err("URL is empty".into());
+    }
+
+    let lower = target.to_ascii_lowercase();
+    if !(lower.starts_with("https://")
+        || lower.starts_with("http://")
+        || lower.starts_with("mailto:")
+        || lower.starts_with("tel:"))
+    {
+        return Err(format!("Unsupported URL scheme: {}", target).into());
+    }
+
+    tauri_plugin_opener::open_url(target, None::<&str>)
+        .map_err(|e| format!("Failed to open URL: {}", e).into())
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
@@ -620,6 +639,7 @@ pub fn run() {
             logout,
             get_user_info,
             get_access_token,
+            open_external_url,
             // Log Mode commands
             log_mode::append_to_file,
             log_mode::validate_log_path,
