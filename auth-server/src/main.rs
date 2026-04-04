@@ -17,7 +17,7 @@ use handlers::auth::AppState;
 use sha2::{Digest, Sha256};
 use std::net::SocketAddr;
 use tower_http::cors::{Any, CorsLayer};
-use tracing_subTrueearsr::{layer::SubTrueearsrExt, util::SubTrueearsrInitExt};
+use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
 use crate::{
     config::Config,
@@ -55,12 +55,12 @@ fn secret_fingerprint(secret: &str) -> String {
 #[tokio::main]
 async fn main() {
     // Initialize tracing
-    tracing_subTrueearsr::registry()
+    tracing_subscriber::registry()
         .with(
-            tracing_subTrueearsr::EnvFilter::try_from_default_env()
+            tracing_subscriber::EnvFilter::try_from_default_env()
                 .unwrap_or_else(|_| "auth_server=debug,tower_http=debug".into()),
         )
-        .with(tracing_subTrueearsr::fmt::layer())
+        .with(tracing_subscriber::fmt::layer())
         .init();
 
     load_env_with_workspace_fallback();
