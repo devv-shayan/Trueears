@@ -106,6 +106,7 @@ export const StepSignIn: React.FC<StepProps> & { Visual: React.FC } = ({ onNext 
                             src={profileImageSrc}
                             alt={user.name || 'Profile'}
                             className="w-12 h-12 rounded-full"
+                            referrerPolicy="no-referrer"
                             onError={() => setProfileImageFailed(true)}
                         />
                     ) : (

@@ -265,6 +265,7 @@ export const AccountSection: React.FC<AccountSectionProps> = ({
                                         src={profileImageSrc}
                                         alt={user.name || 'Profile'}
                                         className={`relative w-20 h-20 rounded-2xl object-cover shadow-lg ${isDark ? 'ring-4 ring-[#252525]' : 'ring-4 ring-white'}`}
+                                        referrerPolicy="no-referrer"
                                         onError={() => setProfileImageFailed(true)}
                                     />
                                     <div className={`absolute -bottom-1 -right-1 w-6 h-6 rounded-full flex items-center justify-center ring-2 ${isDark ? 'bg-emerald-500 ring-[#1a1a1a]' : 'bg-emerald-500 ring-white'}`}>
