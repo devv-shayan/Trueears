@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useSettings } from '../../hooks/useSettings';
-import { openUrl } from '@tauri-apps/plugin-opener';
+import { openExternalUrl } from '../../utils/openExternalUrl';
 
 interface StepProps {
   onNext: () => void;
@@ -104,7 +104,11 @@ export const StepConnect: React.FC<StepProps> & { Visual: React.FC } = ({ onNext
         
         <div className="text-center mt-4">
           <button 
-            onClick={() => openUrl('https://console.groq.com/keys')}
+            onClick={() => {
+              void openExternalUrl('https://console.groq.com/keys').catch((error) => {
+                console.error('[StepConnect] Failed to open key generation URL:', error);
+              });
+            }}
             className="text-[10px] text-gray-600 hover:text-gray-800 transition-colors border-b border-transparent hover:border-gray-500 cursor-pointer"
           >
             Generate key via Console ↗

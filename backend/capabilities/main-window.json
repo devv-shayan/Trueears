@@ -9,6 +9,7 @@
     "core:default",
     "core:event:allow-listen",
     "core:event:allow-emit",
+    "opener:allow-default-urls",
     "core:window:allow-hide",
     "core:window:allow-show",
     "core:window:allow-outer-position",

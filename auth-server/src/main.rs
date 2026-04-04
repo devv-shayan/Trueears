@@ -15,7 +15,7 @@ use axum::{
 };
 use handlers::auth::AppState;
 use sha2::{Digest, Sha256};
-use std::net::SocketAddr;
+use std::{fs, path::Path, net::SocketAddr};
 use tower_http::cors::{Any, CorsLayer};
 use tracing_subscriber::{layer::SubscriberExt, util::SubscriberInitExt};
 
@@ -27,18 +27,56 @@ use crate::{
 };
 
 fn load_env_with_workspace_fallback() {
-    // Load shared workspace env first, overriding stale exported shell values.
-    // This keeps local dev deterministic when multiple services share JWT/API vars.
-    match dotenvy::from_filename_override("../.env") {
-        Ok(path) => tracing::info!("Loaded workspace env from {:?}", path),
-        Err(e) => tracing::debug!("Workspace env not loaded: {}", e),
+    // Clear known config vars so a stale shell session cannot override file-based values.
+    for key in [
+        "DATABASE_URL",
+        "GOOGLE_CLIENT_ID",
+        "GOOGLE_CLIENT_SECRET",
+        "JWT_SECRET",
+        "JWT_ACCESS_EXPIRY_SECONDS",
+        "JWT_REFRESH_EXPIRY_SECONDS",
+        "API_HOST",
+        "API_PORT",
+        "API_URL",
+        "OAUTH_REDIRECT_URI",
+        "RUST_ENV",
+    ] {
+        std::env::remove_var(key);
     }
 
-    // Then load auth-server local env only for missing values.
-    match dotenvy::from_filename(".env") {
-        Ok(path) => tracing::info!("Loaded auth-server env fallback from {:?}", path),
-        Err(e) => tracing::debug!("Auth-server env fallback not loaded: {}", e),
+    load_env_file(Path::new("../.env"), false, "workspace");
+    load_env_file(Path::new(".env"), true, "auth-server");
+}
+
+fn load_env_file(path: &Path, overwrite: bool, label: &str) {
+    let contents = match fs::read_to_string(path) {
+        Ok(contents) => contents,
+        Err(error) => {
+            tracing::debug!("{} env not loaded from {:?}: {}", label, path, error);
+            return;
+        }
+    };
+
+    for raw_line in contents.lines() {
+        let line = raw_line.trim();
+        if line.is_empty() || line.starts_with('#') {
+            continue;
+        }
+
+        let Some((key, value)) = line.split_once('=') else {
+            continue;
+        };
+
+        let key = key.trim();
+        let value = value.trim().trim_matches('"');
+
+        if overwrite || std::env::var_os(key).is_none() {
+            std::env::set_var(key, value);
+        }
+
     }
+
+    tracing::info!("Loaded {} env from {:?}", label, path);
 }
 
 fn secret_fingerprint(secret: &str) -> String {

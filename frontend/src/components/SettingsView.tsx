@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { CustomSelect } from './CustomSelect';
 import { GROQ_MODELS } from '../hooks/useSettings';
-import { openUrl } from '@tauri-apps/plugin-opener';
+import { openExternalUrl } from '../utils/openExternalUrl';
 
 interface SettingsViewProps {
   apiKey: string;
@@ -87,7 +87,11 @@ export const SettingsView: React.FC<SettingsViewProps> = ({
         <div className="flex justify-between items-center">
           <label className="text-[10px] text-gray-500 font-mono">API KEY</label>
           <button
-            onClick={() => openUrl('https://console.groq.com/keys')}
+            onClick={() => {
+              void openExternalUrl('https://console.groq.com/keys').catch((error) => {
+                console.error('[SettingsView] Failed to open key URL:', error);
+              });
+            }}
             className="text-[9px] text-gray-500 hover:text-gray-800 underline decoration-gray-600 hover:decoration-gray-400 transition-colors cursor-pointer"
           >
             Get Key ↗
