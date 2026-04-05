@@ -1,6 +1,6 @@
 {
   "productName": "Trueears",
-  "version": "0.3.0",
+  "version": "0.3.3",
   "identifier": "com.Trueears",
   "build": {
     "frontendDist": "../frontend/dist",
@@ -30,7 +30,11 @@
       }
     ],
     "security": {
-      "csp": null
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: https: http:; media-src 'self' blob: mediastream:; connect-src 'self' https://api.groq.com https://trueears.onrender.com https://*.onrender.com https://*.vercel.app http://localhost:* http://127.0.0.1:*",
+      "capabilities": [
+        "main-window",
+        "settings-window"
+      ]
     }
   },
   "bundle": {

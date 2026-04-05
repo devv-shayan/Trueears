@@ -10,6 +10,8 @@ export const StepSignIn: React.FC<StepProps> & { Visual: React.FC } = ({ onNext 
     const [isLoading, setIsLoading] = useState(false);
     const [user, setUser] = useState<UserInfo | null>(null);
     const [error, setError] = useState<string | null>(null);
+    const [profileImageFailed, setProfileImageFailed] = useState(false);
+    const profileImageSrc = (user?.picture || '').trim();
 
     // Check if user is already signed in on mount
     useEffect(() => {
@@ -26,27 +28,58 @@ export const StepSignIn: React.FC<StepProps> & { Visual: React.FC } = ({ onNext 
         checkAuth();
     }, []);
 
+    useEffect(() => {
+        setProfileImageFailed(false);
+    }, [profileImageSrc]);
+
     const handleSignIn = async () => {
+        let unlisten: (() => void) | null = null;
+        let unlistenError: (() => void) | null = null;
+
+        const getErrorMessage = (err: unknown): string => {
+            if (typeof err === 'string' && err.trim().length > 0) return err;
+            if (err instanceof Error && err.message.trim().length > 0) return err.message;
+            if (err && typeof err === 'object') {
+                const maybe = err as { message?: unknown; error?: unknown };
+                if (typeof maybe.message === 'string' && maybe.message.trim().length > 0) {
+                    return maybe.message;
+                }
+                if (typeof maybe.error === 'string' && maybe.error.trim().length > 0) {
+                    return maybe.error;
+                }
+            }
+            return 'Failed to start sign-in';
+        };
+
+        const cleanupListeners = () => {
+            unlisten?.();
+            unlistenError?.();
+            unlisten = null;
+            unlistenError = null;
+        };
+
         try {
             setIsLoading(true);
             setError(null);
-            await authService.startGoogleLogin();
 
-            // Listen for auth success
-            const unlisten = await authService.onAuthSuccess((userInfo) => {
+            // Listen before starting the flow so we don't miss early events.
+            unlisten = await authService.onAuthSuccess((userInfo) => {
                 setUser(userInfo);
                 setIsLoading(false);
-                unlisten();
+                cleanupListeners();
             });
 
             // Also listen for errors
-            const unlistenError = await authService.onAuthError((err) => {
+            unlistenError = await authService.onAuthError((err) => {
                 setError(err);
                 setIsLoading(false);
-                unlistenError();
+                cleanupListeners();
             });
+
+            await authService.startGoogleLogin();
         } catch (err) {
-            setError('Failed to start sign-in');
+            cleanupListeners();
+            setError(getErrorMessage(err));
             setIsLoading(false);
         }
     };
@@ -68,11 +101,13 @@ export const StepSignIn: React.FC<StepProps> & { Visual: React.FC } = ({ onNext 
             {/* User Profile (if signed in) */}
             {user ? (
                 <div className="flex items-center gap-4 p-4 bg-emerald-50 border border-emerald-200 rounded-xl mb-auto">
-                    {user.picture ? (
+                    {profileImageSrc && !profileImageFailed ? (
                         <img
-                            src={user.picture}
+                            src={profileImageSrc}
                             alt={user.name || 'Profile'}
                             className="w-12 h-12 rounded-full"
+                            referrerPolicy="no-referrer"
+                            onError={() => setProfileImageFailed(true)}
                         />
                     ) : (
                         <div className="w-12 h-12 rounded-full bg-emerald-500 flex items-center justify-center text-white font-bold text-lg">

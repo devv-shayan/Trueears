@@ -1,7 +1,7 @@
 import React, { useState, useMemo, useEffect } from 'react';
-import 'flag-icons/css/flag-icons.min.css';
 import { useSettings } from '../../hooks/useSettings';
 import { WHISPER_LANGUAGES, getLanguageByCode } from '../../types/languages';
+import { FlagIcon } from '../common/FlagIcon';
 
 interface StepProps {
   onNext: () => void;
@@ -22,12 +22,17 @@ const LanguageVisual: React.FC = () => {
             <div className="text-2xl mb-2">🌐</div>
             <span className="text-sm text-gray-400">Auto-detect</span>
           </div>
-        ) : selectedLang ? (
-          <div className="flex items-center gap-3 px-4 py-2 bg-emerald-500/10 border border-emerald-500/30 rounded">
-            <span className={`fi fi-${selectedLang.countryCode.toLowerCase()} text-xl`}></span>
-            <span className="text-lg text-gray-800 font-medium">{selectedLang.name}</span>
-          </div>
-        ) : null}
+          ) : selectedLang ? (
+            <div className="flex items-center gap-3 px-4 py-2 bg-emerald-500/10 border border-emerald-500/30 rounded">
+              <FlagIcon
+                countryCode={selectedLang.countryCode}
+                className="w-7 h-5 rounded-sm object-cover"
+                fallbackClassName="text-xl"
+                label={selectedLang.name}
+              />
+              <span className="text-lg text-gray-800 font-medium">{selectedLang.name}</span>
+            </div>
+          ) : null}
       </div>
     </div>
   );
@@ -96,7 +101,16 @@ export const StepLanguage: React.FC<StepProps> & { Visual: React.FC } = ({ onNex
             {autoDetectLanguage ? (
               <>🌐 Auto-detect <span className="font-normal opacity-50 group-hover:text-white">(Click to change)</span></>
             ) : selectedLang ? (
-              <><span className={`fi fi-${selectedLang.countryCode.toLowerCase()}`}></span> {selectedLang.name} <span className="font-normal opacity-50 group-hover:text-white">(Click to change)</span></>
+              <>
+                <FlagIcon
+                  countryCode={selectedLang.countryCode}
+                  className="w-5 h-4 rounded-sm object-cover"
+                  fallbackClassName="text-base"
+                  label={selectedLang.name}
+                />
+                {selectedLang.name}{' '}
+                <span className="font-normal opacity-50 group-hover:text-white">(Click to change)</span>
+              </>
             ) : (
               <>Select Language</>
             )}
@@ -177,7 +191,12 @@ export const StepLanguage: React.FC<StepProps> & { Visual: React.FC } = ({ onNex
                             : 'bg-transparent border border-transparent hover:bg-gray-50 text-gray-600'
                         }`}
                       >
-                        <span className={`fi fi-${lang.countryCode.toLowerCase()}`}></span>
+                        <FlagIcon
+                          countryCode={lang.countryCode}
+                          className="w-5 h-4 rounded-sm object-cover"
+                          fallbackClassName="text-base"
+                          label={lang.name}
+                        />
                         <span className="text-sm truncate">{lang.name}</span>
                       </button>
                     );

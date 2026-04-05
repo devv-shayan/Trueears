@@ -4,7 +4,7 @@ Local development setup, code conventions, and contribution workflow.
 
 ## Prerequisites
 
-- Node.js v18+
+- Node.js 20.19+ (or 22.12+)
 - Rust (latest stable)
 - Visual Studio Build Tools (Windows only)
 

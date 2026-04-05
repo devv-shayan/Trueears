@@ -6,7 +6,7 @@ Get Trueears running in under 5 minutes.
 
 | Requirement | Version | Installation |
 |-------------|---------|--------------|
-| Node.js | v18+ | [nodejs.org](https://nodejs.org/) |
+| Node.js | 20.19+ or 22.12+ | [nodejs.org](https://nodejs.org/) |
 | Rust | Latest stable | [rustup.rs](https://rustup.rs/) |
 | Groq API Key | - | [console.groq.com](https://console.groq.com/keys) (free) |
 

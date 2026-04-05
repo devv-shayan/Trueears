@@ -1,54 +1,74 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import { tauriAPI } from '../../utils/tauriApi';
 
 interface StepProps {
   onNext: () => void;
   onPrev?: () => void;
+  activeTab: number;
+  onTabChange: (index: number) => void;
 }
 
-// Event for syncing (Quick solution for decoupled layout)
-const TUTORIAL_EVENT = 'Trueears-tutorial-change';
+interface TutorialVisualProps {
+  activeTab: number;
+  onTabChange: (index: number) => void;
+}
 
-const TutorialVisual: React.FC = () => {
-  const [activeTab, setActiveTab] = useState(0);
-  const [emailContent, setEmailContent] = useState("Hi Greg,\n\nJust wanted to confirm the deployment went smoothly. Let me know if you need anything else.\n\nBest,\nAlex");
+const tutorialContent = [
+  {
+    title: <>Send a<br />Message</>,
+    desc: "Hold down the keys, speak, and let go to insert spoken text into any app instantly.",
+    windowTitle: 'Tutorial - Slack',
+  },
+  {
+    title: <>Draft an<br />Email</>,
+    desc: 'Flow automatically punctuates, formats, and fixes mistakes as you speak.',
+    windowTitle: 'Tutorial - Gmail',
+  },
+  {
+    title: <>Whisper a<br />Note</>,
+    desc: 'Flow works even when you whisper. It auto-formats lists and bullets.',
+    windowTitle: 'Tutorial - Notion',
+  },
+] as const;
+
+const tutorialModeMap = ['tutorial-slack', 'tutorial-gmail', 'tutorial-notion'] as const;
+
+const TutorialVisual: React.FC<TutorialVisualProps> = ({ activeTab, onTabChange }) => {
+  const [emailContent, setEmailContent] = useState(
+    'Hi Greg,\n\nJust wanted to confirm the deployment went smoothly. Let me know if you need anything else.\n\nBest,\nAlex'
+  );
   const [emailTouched, setEmailTouched] = useState(false);
-  const [noteContent, setNoteContent] = useState("• AI Integration\n• Voice UI\n• Native Rust Backend");
+  const [noteContent, setNoteContent] = useState(
+    '• AI Integration\n• Voice UI\n• Native Rust Backend'
+  );
   const [noteTouched, setNoteTouched] = useState(false);
-
-  useEffect(() => {
-    const handleTabChange = (e: CustomEvent) => setActiveTab(e.detail);
-    window.addEventListener(TUTORIAL_EVENT as any, handleTabChange);
-    return () => window.removeEventListener(TUTORIAL_EVENT as any, handleTabChange);
-  }, []);
-
-  const handleTabClick = (idx: number) => {
-    setActiveTab(idx);
-    window.dispatchEvent(new CustomEvent(TUTORIAL_EVENT, { detail: idx }));
-  };
 
   return (
     <div className="w-full h-full flex flex-col items-center justify-center relative">
-      {/* Tabs */}
       <div className="absolute top-8 flex gap-8 z-20">
-        {['Message', 'Email', 'Note'].map((label, i) => (
+        {['Message', 'Email', 'Note'].map((label, index) => (
           <button
             key={label}
-            onClick={() => handleTabClick(i)}
-            className={`text-[11px] font-bold uppercase tracking-wider pb-2 border-b-2 transition-all duration-300 cursor-pointer
-              ${activeTab === i ? 'text-emerald-500 border-emerald-500' : 'text-gray-600 border-transparent hover:text-gray-400'}`}
+            onClick={() => onTabChange(index)}
+            className={`text-[11px] font-bold uppercase tracking-wider pb-2 border-b-2 transition-all duration-300 cursor-pointer ${
+              activeTab === index
+                ? 'text-emerald-500 border-emerald-500'
+                : 'text-gray-600 border-transparent hover:text-gray-400'
+            }`}
           >
             {label}
           </button>
         ))}
       </div>
 
-      {/* App Container */}
       <div className="relative w-[380px] h-[280px]">
-        
-        {/* Slack */}
-        <div className={`absolute inset-0 bg-white rounded-xl shadow-2xl overflow-hidden transition-all duration-500 ease-out
-          ${activeTab === 0 ? 'opacity-100 translate-y-0 scale-100 z-10' : 'opacity-0 translate-y-8 scale-95 pointer-events-none'}`}>
+        <div
+          className={`absolute inset-0 bg-white rounded-xl shadow-2xl overflow-hidden transition-all duration-500 ease-out ${
+            activeTab === 0
+              ? 'opacity-100 translate-y-0 scale-100 z-10'
+              : 'opacity-0 translate-y-8 scale-95 pointer-events-none'
+          }`}
+        >
           <div className="h-8 bg-[#f4f4f5] border-b border-[#e4e4e7] flex items-center px-3 gap-1.5">
             <div className="w-2 h-2 rounded-full bg-red-400" />
             <div className="w-2 h-2 rounded-full bg-yellow-400" />
@@ -62,9 +82,9 @@ const TutorialVisual: React.FC = () => {
               </div>
             </div>
             <div className="mt-auto mb-2 border border-gray-300 rounded-lg p-2 flex items-center focus-within:ring-2 focus-within:ring-blue-100 transition-all bg-white">
-              <input 
-                type="text" 
-                placeholder="Hold keys to speak..." 
+              <input
+                type="text"
+                placeholder="Hold keys to speak..."
                 className="w-full text-xs text-gray-800 placeholder-gray-400 outline-none bg-transparent"
                 autoFocus={activeTab === 0}
               />
@@ -73,18 +93,28 @@ const TutorialVisual: React.FC = () => {
           </div>
         </div>
 
-        {/* Gmail */}
-        <div className={`absolute inset-0 bg-white rounded-xl shadow-2xl overflow-hidden transition-all duration-500 ease-out
-          ${activeTab === 1 ? 'opacity-100 translate-y-0 scale-100 z-10' : 'opacity-0 translate-y-8 scale-95 pointer-events-none'}`}>
+        <div
+          className={`absolute inset-0 bg-white rounded-xl shadow-2xl overflow-hidden transition-all duration-500 ease-out ${
+            activeTab === 1
+              ? 'opacity-100 translate-y-0 scale-100 z-10'
+              : 'opacity-0 translate-y-8 scale-95 pointer-events-none'
+          }`}
+        >
           <div className="h-8 bg-[#f4f4f5] border-b border-[#e4e4e7] flex items-center px-3 gap-1.5">
             <div className="w-2 h-2 rounded-full bg-gray-300" />
             <div className="w-2 h-2 rounded-full bg-gray-300" />
           </div>
           <div className="p-6 font-sans text-gray-800 flex flex-col h-full">
-            <div className="border-b pb-2 mb-2 text-xs text-gray-500">To: <span className="font-bold text-black">Greg</span></div>
-            <div className="border-b pb-2 mb-4 text-xs text-gray-500">Subject: <span className="font-bold text-black">Quick Update</span></div>
+            <div className="border-b pb-2 mb-2 text-xs text-gray-500">
+              To: <span className="font-bold text-black">Greg</span>
+            </div>
+            <div className="border-b pb-2 mb-4 text-xs text-gray-500">
+              Subject: <span className="font-bold text-black">Quick Update</span>
+            </div>
             <textarea
-              className={`w-full h-full resize-none outline-none text-xs leading-relaxed ${emailTouched ? 'text-gray-800' : 'text-gray-400'}`}
+              className={`w-full h-full resize-none outline-none text-xs leading-relaxed ${
+                emailTouched ? 'text-gray-800' : 'text-gray-400'
+              }`}
               placeholder="Type or dictate your email here..."
               value={emailContent}
               onChange={(e) => setEmailContent(e.target.value)}
@@ -98,16 +128,22 @@ const TutorialVisual: React.FC = () => {
           </div>
         </div>
 
-        {/* Notion */}
-        <div className={`absolute inset-0 bg-white rounded-xl shadow-2xl overflow-hidden transition-all duration-500 ease-out
-          ${activeTab === 2 ? 'opacity-100 translate-y-0 scale-100 z-10' : 'opacity-0 translate-y-8 scale-95 pointer-events-none'}`}>
+        <div
+          className={`absolute inset-0 bg-white rounded-xl shadow-2xl overflow-hidden transition-all duration-500 ease-out ${
+            activeTab === 2
+              ? 'opacity-100 translate-y-0 scale-100 z-10'
+              : 'opacity-0 translate-y-8 scale-95 pointer-events-none'
+          }`}
+        >
           <div className="h-8 bg-gray-50 border-b border-gray-200 flex items-center px-3 gap-1.5">
             <div className="w-2 h-2 rounded-full bg-gray-200" />
           </div>
           <div className="p-8 font-sans text-gray-600 h-full flex flex-col">
             <div className="text-2xl font-bold text-gray-800 mb-4">Smart Formatting</div>
             <textarea
-              className={`w-full h-full resize-none outline-none bg-transparent text-sm leading-relaxed ${noteTouched ? 'text-gray-600' : 'text-gray-400'}`}
+              className={`w-full h-full resize-none outline-none bg-transparent text-sm leading-relaxed ${
+                noteTouched ? 'text-gray-600' : 'text-gray-400'
+              }`}
               placeholder="Dictate a note..."
               value={noteContent}
               onChange={(e) => setNoteContent(e.target.value)}
@@ -120,81 +156,52 @@ const TutorialVisual: React.FC = () => {
             />
           </div>
         </div>
-
       </div>
     </div>
   );
 };
 
-export const StepTutorial: React.FC<StepProps> & { Visual: React.FC } = ({ onNext, onPrev }) => {
-  const [activeTab, setActiveTab] = useState(0);
-
-  const content = [
-    { 
-      title: <>Send a<br/>Message</>, 
-      desc: "Hold down the keys, speak, and let go to insert spoken text into any app instantly.",
-      windowTitle: "Tutorial - Slack"
-    },
-    { 
-      title: <>Draft an<br/>Email</>, 
-      desc: "Flow automatically punctuates, formats, and fixes mistakes as you speak.",
-      windowTitle: "Tutorial - Gmail"
-    },
-    { 
-      title: <>Whisper a<br/>Note</>, 
-      desc: "Flow works even when you whisper. It auto-formats lists and bullets.",
-      windowTitle: "Tutorial - Notion"
-    }
-  ];
+export const StepTutorial: React.FC<StepProps> & { Visual: React.FC<TutorialVisualProps> } = ({
+  onNext,
+  onPrev,
+  activeTab,
+  onTabChange,
+}) => {
+  useEffect(() => {
+    onTabChange(0);
+  }, [onTabChange]);
 
   useEffect(() => {
-    const handleTabChange = (e: CustomEvent) => setActiveTab(e.detail);
-    window.addEventListener(TUTORIAL_EVENT as any, handleTabChange);
-    
-    // Set initial title
-    tauriAPI.setWindowTitle(content[0].windowTitle);
+    const activeContent = tutorialContent[activeTab] ?? tutorialContent[0];
+    const activeMode = tutorialModeMap[activeTab] ?? tutorialModeMap[0];
 
-    return () => {
-      window.removeEventListener(TUTORIAL_EVENT as any, handleTabChange);
-      // Reset title on unmount
-      tauriAPI.setWindowTitle("Trueears Settings");
-    };
-  }, []);
-
-  // Effect to update title when tab changes
-  useEffect(() => {
-    console.log('[StepTutorial] Active tab changed to:', activeTab, 'Setting title:', content[activeTab].windowTitle);
-    tauriAPI.setWindowTitle(content[activeTab].windowTitle);
-    
-    // Set store value for RecorderOverlay override
-    const modeMap = ['tutorial-slack', 'tutorial-gmail', 'tutorial-notion'];
-    tauriAPI.setStoreValue('Trueears_TUTORIAL_MODE', modeMap[activeTab]);
+    tauriAPI.setWindowTitle(activeContent.windowTitle);
+    tauriAPI.setStoreValue('Trueears_TUTORIAL_MODE', activeMode);
   }, [activeTab]);
 
-  // Cleanup on unmount
   useEffect(() => {
     return () => {
-        tauriAPI.setStoreValue('Trueears_TUTORIAL_MODE', '');
+      tauriAPI.setWindowTitle('Trueears Settings');
+      tauriAPI.setStoreValue('Trueears_TUTORIAL_MODE', '');
     };
   }, []);
 
-  const changeTab = (idx: number) => {
-    setActiveTab(idx);
-    window.dispatchEvent(new CustomEvent(TUTORIAL_EVENT, { detail: idx }));
-  };
-
   const handleNextStep = () => {
-    if (activeTab < 2) {
-      changeTab(activeTab + 1);
-    } else {
-      onNext();
+    if (activeTab < tutorialContent.length - 1) {
+      onTabChange(activeTab + 1);
+      return;
     }
+
+    onNext();
   };
 
   const handlePrevStep = () => {
     if (activeTab > 0) {
-      changeTab(activeTab - 1);
-    } else if (onPrev) {
+      onTabChange(activeTab - 1);
+      return;
+    }
+
+    if (onPrev) {
       onPrev();
     }
   };
@@ -203,10 +210,10 @@ export const StepTutorial: React.FC<StepProps> & { Visual: React.FC } = ({ onNex
     <div className="h-full flex flex-col">
       <div>
         <h1 className="font-['Syne'] font-extrabold text-4xl leading-[0.95] tracking-tight mb-4 min-h-[80px] text-gray-900">
-          {content[activeTab].title}
+          {tutorialContent[activeTab].title}
         </h1>
         <p className="text-gray-500 text-sm font-medium max-w-xs leading-relaxed mb-8 min-h-[60px]">
-          {content[activeTab].desc}
+          {tutorialContent[activeTab].desc}
         </p>
       </div>
 
@@ -221,7 +228,7 @@ export const StepTutorial: React.FC<StepProps> & { Visual: React.FC } = ({ onNex
           onClick={handleNextStep}
           className="flex-1 py-4 rounded-xl font-['Syne'] font-bold text-xs uppercase tracking-wider bg-white text-gray-900 border border-gray-200 hover:bg-emerald-500 hover:text-white hover:border-emerald-500 shadow-sm hover:shadow-lg transition-all cursor-pointer"
         >
-          {activeTab === 2 ? 'Finish Setup' : 'Next Tip'}
+          {activeTab === tutorialContent.length - 1 ? 'Finish Setup' : 'Next Tip'}
         </button>
       </div>
     </div>

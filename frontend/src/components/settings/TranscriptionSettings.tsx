@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useMemo } from 'react';
-import 'flag-icons/css/flag-icons.min.css';
 import { CustomSelect } from '../CustomSelect';
 import { GROQ_MODELS } from '../../hooks/useSettings';
-import { open } from '@tauri-apps/plugin-shell';
+import { openExternalUrl } from '../../utils/openExternalUrl';
 import { WHISPER_LANGUAGES, getLanguageByCode } from '../../types/languages';
+import { FlagIcon } from '../common/FlagIcon';
 
 interface TranscriptionSettingsProps {
   apiKey: string;
@@ -204,7 +204,14 @@ export const TranscriptionSettings: React.FC<TranscriptionSettingsProps> = ({
           </div>
           <p className={`text-xs ${isDark ? 'text-gray-400' : 'text-gray-600'}`}>
             Get your API key from{' '}
-            <button onClick={() => open('https://console.groq.com/keys')} className="text-blue-400 hover:underline cursor-pointer">
+            <button
+              onClick={() => {
+                void openExternalUrl('https://console.groq.com/keys').catch((error) => {
+                  console.error('[TranscriptionSettings] Failed to open Groq key URL:', error);
+                });
+              }}
+              className="text-blue-400 hover:underline cursor-pointer"
+            >
               console.groq.com/keys
             </button>
           </p>
@@ -255,7 +262,13 @@ export const TranscriptionSettings: React.FC<TranscriptionSettingsProps> = ({
                 <span className="text-sm text-gray-400 italic flex items-center gap-2">🌐 Auto-detect enabled</span>
               ) : selectedLang ? (
                 <span className={`flex items-center gap-2 px-2 py-1 bg-emerald-500/10 border border-emerald-500/30 rounded text-sm ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>
-                  <span className={`fi fi-${selectedLang.countryCode.toLowerCase()}`}></span> {selectedLang.name}
+                  <FlagIcon
+                    countryCode={selectedLang.countryCode}
+                    className="w-5 h-4 rounded-sm object-cover"
+                    fallbackClassName="text-base"
+                    label={selectedLang.name}
+                  />
+                  {selectedLang.name}
                 </span>
               ) : null}
             </div>
@@ -336,7 +349,12 @@ export const TranscriptionSettings: React.FC<TranscriptionSettingsProps> = ({
                           : isDark ? 'bg-transparent border border-transparent hover:bg-[#252525] text-gray-400' : 'bg-transparent border border-transparent hover:bg-gray-50 text-gray-600'
                           }`}
                       >
-                        <span className={`fi fi-${lang.countryCode.toLowerCase()}`}></span>
+                        <FlagIcon
+                          countryCode={lang.countryCode}
+                          className="w-5 h-4 rounded-sm object-cover"
+                          fallbackClassName="text-base"
+                          label={lang.name}
+                        />
                         <span className="text-sm truncate">{lang.name}</span>
                       </button>
                     );

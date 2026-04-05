@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useEffectEvent } from 'react';
 import { AudioVisualizer } from './AudioVisualizer';
 import { useSettings } from '../hooks/useSettings';
 import { useDictation } from '../hooks/useDictation';
@@ -12,9 +12,7 @@ import { tauriAPI, ShortcutPressedPayload } from '../utils/tauriApi';
 import { ActiveWindowInfo } from '../types/appProfile';
 import { AppProfileService } from '../services/appProfileService';
 import { debug } from '../utils/debug';
-
-// Module-level flag to prevent duplicate listeners (survives React Strict Mode)
-let listenersInitialized = false;
+import { getCurrentWindow, PhysicalSize } from '@tauri-apps/api/window';
 
 export const RecorderOverlay: React.FC = () => {
   const isLinux = navigator.userAgent.toLowerCase().includes('linux');
@@ -29,6 +27,7 @@ export const RecorderOverlay: React.FC = () => {
 
   const capsuleRef = useRef<HTMLDivElement | null>(null);
   const logConfigIgnoreMouseRef = useRef<boolean | null>(null);
+  const warningHideTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const {
     apiKey,
@@ -142,7 +141,6 @@ export const RecorderOverlay: React.FC = () => {
       }
 
       try {
-        const { getCurrentWindow } = await import('@tauri-apps/api/window');
         const window = getCurrentWindow();
         const position = await window.outerPosition();
         // Vertical padding is the absolute value of the negative Y position
@@ -225,7 +223,7 @@ export const RecorderOverlay: React.FC = () => {
     if (!isVisible || recordingStatus !== 'log-config-needed') return;
 
     let isUnmounted = false;
-    let intervalId: NodeJS.Timeout | null = null;
+    let timeoutId: NodeJS.Timeout | null = null;
     let inFlight = false;
 
     let cachedWindowPos: { x: number; y: number } | null = null;
@@ -235,13 +233,14 @@ export const RecorderOverlay: React.FC = () => {
       if (cachedWindowPos && cachedScale) {
         return { pos: cachedWindowPos, scale: cachedScale };
       }
-      const { getCurrentWindow } = await import('@tauri-apps/api/window');
       const window = getCurrentWindow();
       const [pos, scale] = await Promise.all([window.outerPosition(), window.scaleFactor()]);
       cachedWindowPos = pos;
       cachedScale = scale;
       return { pos, scale };
     };
+
+    const POLL_INTERVAL_MS = 120;
 
     const tick = async () => {
       if (isUnmounted || inFlight) return;
@@ -272,15 +271,19 @@ export const RecorderOverlay: React.FC = () => {
         // Ignore
       } finally {
         inFlight = false;
+        if (!isUnmounted) {
+          timeoutId = setTimeout(() => {
+            void tick();
+          }, POLL_INTERVAL_MS);
+        }
       }
     };
 
-    tick();
-    intervalId = setInterval(tick, 50);
+    void tick();
 
     return () => {
       isUnmounted = true;
-      if (intervalId) clearInterval(intervalId);
+      if (timeoutId) clearTimeout(timeoutId);
       logConfigIgnoreMouseRef.current = null;
     };
   }, [isVisible, recordingStatus]);
@@ -346,7 +349,6 @@ export const RecorderOverlay: React.FC = () => {
     }
 
     try {
-      const { getCurrentWindow, PhysicalSize } = await import('@tauri-apps/api/window');
       const window = getCurrentWindow();
       await window.setSize(new PhysicalSize(560, 220));
       await window.center();
@@ -628,66 +630,70 @@ export const RecorderOverlay: React.FC = () => {
     }
   }, [recordingStatus, cancelDictation, isVisible]);
 
-  // Legacy handleToggle for backward compatibility (used by some internal calls)
-  const handleToggle = useCallback(async (payload: ShortcutPressedPayload) => {
-    handleShortcutPressed(payload);
-  }, [handleShortcutPressed]);
+  const handleEscapeKeyDown = useEffectEvent((event: KeyboardEvent) => {
+    if (event.key !== 'Escape' || !isVisible) {
+      return;
+    }
 
-  // Refs to hold latest callbacks for Tauri event listeners
-  const handleToggleRef = useRef(handleToggle);
-  const handleShortcutPressedRef = useRef(handleShortcutPressed);
-  const handleShortcutReleasedRef = useRef(handleShortcutReleased);
-  const handleShortcutCancelledRef = useRef(handleShortcutCancelled);
+    if (recordingStatus === 'recording') {
+      cancelDictation();
+      return;
+    }
 
-  // Keep refs up to date
-  useEffect(() => {
-    handleToggleRef.current = handleToggle;
-    handleShortcutPressedRef.current = handleShortcutPressed;
-    handleShortcutReleasedRef.current = handleShortcutReleased;
-    handleShortcutCancelledRef.current = handleShortcutCancelled;
+    setIsVisible(false);
   });
 
-  // -- Keyboard Shortcuts (Escape key + F12 for DevTools) --
-  useEffect(() => {
-    const handleKeyDown = async (e: KeyboardEvent) => {
-      if (e.key === 'Escape' && isVisible) {
-        if (recordingStatus === 'recording') cancelDictation();
-        else setIsVisible(false);
-      }
+  const handleShortcutPressedEvent = useEffectEvent((payload: ShortcutPressedPayload) => {
+    debug.log('[RecorderOverlay] Shortcut pressed callback fired with window info:', payload);
+    void handleShortcutPressed(payload);
+  });
 
-      // F12 to open DevTools
-      if (e.key === 'F12') {
-        e.preventDefault();
-        try {
-          const { getCurrentWindow } = await import('@tauri-apps/api/window');
-          const window = getCurrentWindow();
-          // @ts-ignore - isDevToolsOpen might not be in types
-          if (window.isDevToolsOpen && await window.isDevToolsOpen()) {
-            // @ts-ignore
-            await window.closeDevTools();
-          } else {
-            // @ts-ignore
-            await window.openDevTools();
-          }
-        } catch (err) {
-          console.error('Failed to toggle DevTools:', err);
-        }
-      }
+  const handleShortcutReleasedEvent = useEffectEvent(() => {
+    debug.log('[RecorderOverlay] Shortcut released callback fired');
+    handleShortcutReleased();
+  });
+
+  const handleShortcutCancelledEvent = useEffectEvent(() => {
+    debug.log('[RecorderOverlay] Shortcut cancelled callback fired');
+    handleShortcutCancelled();
+  });
+
+  const handleWarningEvent = useEffectEvent((message: string) => {
+    debug.log('[RecorderOverlay] Warning callback fired:', message);
+    setWarningMessage(message);
+    setUiMode('warning');
+    setIsVisible(true);
+
+    if (warningHideTimeoutRef.current) {
+      clearTimeout(warningHideTimeoutRef.current);
+    }
+
+    warningHideTimeoutRef.current = setTimeout(() => {
+      setIsVisible(false);
+      setUiMode('none');
+      warningHideTimeoutRef.current = null;
+    }, 3000);
+  });
+
+  const handleOnboardingTriggerStateEvent = useEffectEvent((active: boolean) => {
+    debug.log('[RecorderOverlay] onboarding-trigger-state changed:', active);
+    setOnboardingTriggerActive(active);
+  });
+
+  // -- Keyboard Shortcuts (Escape key) --
+  useEffect(() => {
+    const handleKeyDown = (event: KeyboardEvent) => {
+      handleEscapeKeyDown(event);
     };
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [isVisible, cancelDictation, recordingStatus]);
+  }, []);
 
   // -- Tauri Event Listeners (setup ONCE using module-level flag) --
   useEffect(() => {
-    // Skip if already initialized (prevents React Strict Mode double-init)
-    if (listenersInitialized) {
-      debug.log('[RecorderOverlay] Listeners already initialized, skipping');
-      return;
-    }
-    listenersInitialized = true;
     debug.log('[RecorderOverlay] Setting up Tauri event listeners...');
+    let isActive = true;
 
     let unlistenPressed: (() => void) | null = null;
     let unlistenReleased: (() => void) | null = null;
@@ -700,52 +706,53 @@ export const RecorderOverlay: React.FC = () => {
 
       // Wait a bit for Tauri context to be available after HMR
       await new Promise(resolve => setTimeout(resolve, 100));
+      if (!isActive) {
+        return;
+      }
 
-      unlistenPressed = await tauriAPI.onShortcutPressed((windowInfo) => {
-        debug.log('[RecorderOverlay] Shortcut pressed callback fired with window info:', windowInfo);
-        handleShortcutPressedRef.current(windowInfo);
+      unlistenPressed = await tauriAPI.onShortcutPressed((payload) => {
+        handleShortcutPressedEvent(payload);
       });
 
       unlistenReleased = await tauriAPI.onShortcutReleased(() => {
-        debug.log('[RecorderOverlay] Shortcut released callback fired');
-        handleShortcutReleasedRef.current();
+        handleShortcutReleasedEvent();
       });
 
       unlistenCancelled = await tauriAPI.onShortcutCancelled(() => {
-        debug.log('[RecorderOverlay] Shortcut cancelled callback fired');
-        handleShortcutCancelledRef.current();
+        handleShortcutCancelledEvent();
       });
 
-      unlistenWarning = await tauriAPI.onShowWarning((msg) => {
-        debug.log('[RecorderOverlay] Warning callback fired:', msg);
-        setWarningMessage(msg);
-        setUiMode('warning');
-        setIsVisible(true);
-        setTimeout(() => {
-          setIsVisible(false);
-          setUiMode('none');
-        }, 3000);
+      unlistenWarning = await tauriAPI.onShowWarning((message) => {
+        handleWarningEvent(message);
       });
 
       unlistenOnboardingState = await tauriAPI.onOnboardingTriggerState((active) => {
-        debug.log('[RecorderOverlay] onboarding-trigger-state changed:', active);
-        setOnboardingTriggerActive(active);
+        handleOnboardingTriggerStateEvent(active);
       });
 
       debug.log('[RecorderOverlay] All listeners set up successfully!');
     };
 
     setupListeners().catch(error => {
-      console.error('[RecorderOverlay] Failed to setup listeners:', error);
-      listenersInitialized = false; // Allow retry
+      if (isActive) {
+        console.error('[RecorderOverlay] Failed to setup listeners:', error);
+      }
     });
 
-    // Don't clean up on React re-renders - listeners should persist
     return () => {
-      // Only log, don't actually cleanup (we want listeners to persist)
-      debug.log('[RecorderOverlay] Effect cleanup (listeners persist)');
+      isActive = false;
+      unlistenPressed?.();
+      unlistenReleased?.();
+      unlistenCancelled?.();
+      unlistenWarning?.();
+      unlistenOnboardingState?.();
+      if (warningHideTimeoutRef.current) {
+        clearTimeout(warningHideTimeoutRef.current);
+        warningHideTimeoutRef.current = null;
+      }
+      debug.log('[RecorderOverlay] Tauri listeners cleaned up');
     };
-  }, []); // Empty deps - setup ONCE on mount
+  }, []);
 
   const handleCancelLogConfig = useCallback(async () => {
     // Start transition animation
@@ -861,7 +868,7 @@ export const RecorderOverlay: React.FC = () => {
               )}
 
               {/* WARNING MODE */}
-              {status === 'warning' && <WarningView message={warningMessage} />}
+              {status === 'warning' ? <WarningView message={warningMessage} /> : null}
 
               {/* SETUP MODE: Input Field */}
               {status === 'setup' && (
@@ -967,7 +974,13 @@ export const RecorderOverlay: React.FC = () => {
                 className={`absolute inset-0 flex items-center justify-center transition-opacity duration-300 ${status === 'recording' && mediaStream ? 'opacity-100 delay-100' : 'opacity-0 pointer-events-none'}`}
               >
                 {/* Visualizer logic remains same */}
-                {status === 'recording' && mediaStream && <AudioVisualizer stream={mediaStream} isRecording={true} barColor={currentMeta.accent} />}
+                {status === 'recording' && mediaStream ? (
+                  <AudioVisualizer
+                    stream={mediaStream}
+                    isRecording={true}
+                    barColor={currentMeta.accent}
+                  />
+                ) : null}
               </div>
 
               {/* STATUS ICONS - Hide during config transitions */}

@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef, useMemo } from 'react';
-import 'flag-icons/css/flag-icons.min.css';
 import { AppProfile } from '../../types/appProfile';
 import { AppProfileService } from '../../services/appProfileService';
 import { tauriAPI } from '../../utils/tauriApi';
@@ -7,6 +6,7 @@ import { POPULAR_APPS, PopularApp, BrowserVariant } from '../../data/popularApps
 import { invoke } from '@tauri-apps/api/core';
 import { WHISPER_LANGUAGES, getLanguageByCode } from '../../types/languages';
 import { useSettings } from '../../hooks/useSettings';
+import { FlagIcon } from '../common/FlagIcon';
 
 interface AppProfilesSettingsProps {
   theme: 'light' | 'dark';
@@ -85,6 +85,13 @@ const isBrowserExecutable = (exe: string) => {
   return BROWSER_EXECUTABLES.has(base);
 };
 
+const toDataImageSrc = (rawValue?: string): string | null => {
+  const normalized = (rawValue || '').trim();
+  if (!normalized) return null;
+  if (/^data:image\//i.test(normalized)) return normalized;
+  return `data:image/png;base64,${normalized}`;
+};
+
 const escapeRegexLiteral = (s: string) => s.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
 
 // Normalize a website URL/domain for storage + comparison
@@ -140,6 +147,7 @@ const BrowserSetupModal = ({
   const [websiteUrlInput, setWebsiteUrlInput] = useState('');
   const [systemPrompt, setSystemPrompt] = useState('');
   const [error, setError] = useState('');
+  const browserIconSrc = toDataImageSrc(browserApp.icon_base64);
 
   const handleSave = () => {
     const normalized = normalizeWebsiteUrl(websiteUrlInput);
@@ -167,8 +175,8 @@ const BrowserSetupModal = ({
       <div className={`rounded-2xl max-w-lg w-full p-6 ${isDark ? 'bg-[#1a1a1a] border border-[#333]' : 'bg-white border border-gray-200'}`}>
         <div className="flex items-center gap-3 mb-6">
           <div className={`w-12 h-12 rounded-xl flex items-center justify-center overflow-hidden ${isDark ? 'bg-[#252525]' : 'bg-gray-100'}`}>
-            {browserApp.icon_base64 ? (
-              <img src={`data:image/png;base64,${browserApp.icon_base64}`} alt={browserApp.name} className="w-full h-full object-contain" />
+            {browserIconSrc ? (
+              <img src={browserIconSrc} alt={browserApp.name} className="w-full h-full object-contain" />
             ) : (
               <span className="text-2xl">🌐</span>
             )}
@@ -192,7 +200,7 @@ const BrowserSetupModal = ({
               placeholder="e.g., mail.google.com or https://web.whatsapp.com"
               autoFocus
             />
-            {error && <p className="text-rose-500 text-xs mt-1">{error}</p>}
+            {error ? <p className="text-rose-500 text-xs mt-1">{error}</p> : null}
             <p className={`text-xs mt-1.5 ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>
               This will match against the active tab URL (best-effort)
             </p>
@@ -280,7 +288,7 @@ const BrowserAppSetupModal = ({
             onChange={e => { setWebsiteKeyword(e.target.value); setError(''); }}
             placeholder="e.g., Gmail, WhatsApp, YouTube"
           />
-          {error && <p className="text-rose-500 text-xs mt-1">{error}</p>}
+          {error ? <p className="text-rose-500 text-xs mt-1">{error}</p> : null}
           <p className={`text-xs mt-1.5 ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>
             This keyword will be matched against the browser tab title
           </p>
@@ -517,6 +525,7 @@ const ProfileModal = ({
                         const usedCount = existingProfiles.filter(p => p.appName.toLowerCase() === app.executable.toLowerCase()).length;
                         const appIsBrowser = isBrowserExecutable(app.executable) || app.category === 'browser';
                         const disabled = usedCount > 0 && !appIsBrowser;
+                        const iconSrc = toDataImageSrc(app.icon_base64);
                         const badge = usedCount > 0
                           ? (appIsBrowser ? `${usedCount} website${usedCount === 1 ? '' : 's'}` : 'Already added')
                           : null;
@@ -528,8 +537,8 @@ const ProfileModal = ({
                             className={`w-full text-left px-4 py-3 flex items-center gap-3 transition-colors ${disabled ? (isDark ? 'opacity-60 cursor-not-allowed' : 'opacity-60 cursor-not-allowed') : 'cursor-pointer'} ${isDark ? (!disabled ? 'hover:bg-[#252525]' : '') : (!disabled ? 'hover:bg-gray-50' : '')} ${idx > 0 ? (isDark ? 'border-t border-[#333]' : 'border-t border-gray-100') : ''}`}
                           >
                         <div className="w-8 h-8 rounded flex items-center justify-center shrink-0 overflow-hidden">
-                          {app.icon_base64 ? (
-                            <img src={`data:image/png;base64,${app.icon_base64}`} alt={app.name} className="w-full h-full object-contain" />
+                          {iconSrc ? (
+                            <img src={iconSrc} alt={app.name} className="w-full h-full object-contain" />
                           ) : (
                             <span className="text-lg">{CATEGORY_ICONS[app.category] || '📦'}</span>
                           )}
@@ -580,7 +589,9 @@ const ProfileModal = ({
                     onChange={e => { setFormData({ ...formData, displayName: e.target.value }); setErrors({ ...errors, displayName: undefined }); }}
                     placeholder="e.g. My Special App"
                   />
-                  {errors.displayName && <p className="text-rose-500 text-xs mt-1">{errors.displayName}</p>}
+                  {errors.displayName ? (
+                    <p className="text-rose-500 text-xs mt-1">{errors.displayName}</p>
+                  ) : null}
                 </div>
 
                 <div>
@@ -594,8 +605,12 @@ const ProfileModal = ({
                     onChange={e => { setFormData({ ...formData, appName: e.target.value }); setErrors({ ...errors, appName: undefined, websiteUrl: undefined, duplicate: undefined }); }}
                     placeholder="e.g., cursor.exe"
                   />
-                  {errors.appName && <p className="text-rose-500 text-xs mt-1">{errors.appName}</p>}
-                  {errors.duplicate && <p className="text-rose-500 text-xs mt-1">{errors.duplicate}</p>}
+                  {errors.appName ? (
+                    <p className="text-rose-500 text-xs mt-1">{errors.appName}</p>
+                  ) : null}
+                  {errors.duplicate ? (
+                    <p className="text-rose-500 text-xs mt-1">{errors.duplicate}</p>
+                  ) : null}
                   <p className={`text-xs mt-1.5 ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>The .exe file name of your application</p>
                   {alreadyUsedCount > 0 && (
                     <p className={`text-xs mt-1.5 ${isDark ? 'text-amber-400' : 'text-amber-700'}`}>
@@ -619,7 +634,9 @@ const ProfileModal = ({
                       onChange={e => { setFormData({ ...formData, websiteUrl: e.target.value }); setErrors({ ...errors, websiteUrl: undefined, duplicate: undefined }); }}
                       placeholder="e.g., mail.google.com or https://web.whatsapp.com"
                     />
-                    {errors.websiteUrl && <p className="text-rose-500 text-xs mt-1">{errors.websiteUrl}</p>}
+                    {errors.websiteUrl ? (
+                      <p className="text-rose-500 text-xs mt-1">{errors.websiteUrl}</p>
+                    ) : null}
                     <p className={`text-xs mt-1.5 ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>Matched against the active tab URL (best-effort)</p>
                   </div>
                 )}
@@ -645,13 +662,24 @@ const ProfileModal = ({
                     <div className={`flex-1 flex items-center gap-2 border rounded-lg p-3 min-h-12 ${isDark ? 'bg-[#1a1a1a] border-[#333]' : 'bg-white border-gray-300'}`}>
                       {selectedLang ? (
                         <span className={`flex items-center gap-2 px-2 py-1 bg-emerald-500/10 border border-emerald-500/30 rounded text-sm ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>
-                          <span className={`fi fi-${selectedLang.countryCode.toLowerCase()}`}></span> {selectedLang.name}
+                          <FlagIcon
+                            countryCode={selectedLang.countryCode}
+                            className="w-5 h-4 rounded-sm object-cover"
+                            fallbackClassName="text-base"
+                            label={selectedLang.name}
+                          />
+                          {selectedLang.name}
                         </span>
                       ) : globalAutoDetect ? (
                         <span className="text-sm text-gray-400 italic flex items-center gap-2">🌐 Default (Auto-detect)</span>
                       ) : globalLang ? (
                         <span className="text-sm text-gray-400 flex items-center gap-2">
-                          <span className={`fi fi-${globalLang.countryCode.toLowerCase()}`}></span>
+                          <FlagIcon
+                            countryCode={globalLang.countryCode}
+                            className="w-5 h-4 rounded-sm object-cover"
+                            fallbackClassName="text-base"
+                            label={globalLang.name}
+                          />
                           <span className="italic">Default ({globalLang.name})</span>
                         </span>
                       ) : (
@@ -747,7 +775,12 @@ const ProfileModal = ({
                             : isDark ? 'bg-transparent border border-transparent hover:bg-[#252525] text-gray-400' : 'bg-transparent border border-transparent hover:bg-gray-50 text-gray-600'
                         }`}
                       >
-                        <span className={`fi fi-${lang.countryCode.toLowerCase()}`}></span>
+                        <FlagIcon
+                          countryCode={lang.countryCode}
+                          className="w-5 h-4 rounded-sm object-cover"
+                          fallbackClassName="text-base"
+                          label={lang.name}
+                        />
                         <span className="text-sm truncate">{lang.name}</span>
                       </button>
                     );
@@ -1023,14 +1056,15 @@ export const AppProfilesSettings: React.FC<AppProfilesSettingsProps> = ({ theme 
                     const profile = !isBrowserApp ? getProfileForApp(app.executable) : null;
                     const isEnabled = isBrowserApp ? browserProfiles.length > 0 : !!profile;
                     const popularAppData = POPULAR_APPS.find(p => p.executable?.toLowerCase() === app.executable.toLowerCase());
+                    const iconSrc = toDataImageSrc(app.icon_base64);
 
                     return (
                       <div key={app.executable}>
                         <div className={`flex items-center justify-between p-4 rounded-lg border transition-all ${isDark ? 'bg-[#1a1a1a] border-[#333] hover:bg-[#202020]' : 'bg-white border-gray-300 hover:bg-gray-50'}`}>
                           <div className="flex items-center gap-4 flex-1">
                             <div className="w-10 h-10 rounded-lg flex items-center justify-center text-xl overflow-hidden">
-                              {app.icon_base64 ? (
-                                <img src={`data:image/png;base64,${app.icon_base64}`} alt={app.name} className="w-full h-full object-contain" />
+                              {iconSrc ? (
+                                <img src={iconSrc} alt={app.name} className="w-full h-full object-contain" />
                               ) : (
                                 CATEGORY_ICONS[app.category] || '📦'
                               )}
@@ -1145,37 +1179,40 @@ export const AppProfilesSettings: React.FC<AppProfilesSettingsProps> = ({ theme 
             <div>
               <h3 className={`text-sm font-medium mb-3 uppercase tracking-wide ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>Custom Apps</h3>
               <div className="space-y-2">
-                {customProfiles.map(profile => (
-                  <div
-                    key={profile.id}
-                    className={`flex items-center justify-between p-4 rounded-lg border transition-all ${isDark ? 'bg-[#1a1a1a] border-[#333] hover:bg-[#202020]' : 'bg-white border-gray-300 hover:bg-gray-50'}`}
-                  >
-                    <div className="flex items-center gap-4 flex-1">
-                      <div className="w-10 h-10 rounded-lg flex items-center justify-center text-xl overflow-hidden">
-                        {profile.iconBase64 ? (
-                          <img src={`data:image/png;base64,${profile.iconBase64}`} alt={profile.displayName} className="w-full h-full object-contain" />
-                        ) : (
-                          '🛠️'
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <h4 className={`font-medium ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>{profile.displayName}</h4>
-                          <span className={`text-[10px] px-1.5 py-0.5 rounded uppercase font-medium ${isDark ? 'bg-indigo-500/20 text-indigo-400' : 'bg-indigo-100 text-indigo-700'}`}>Custom</span>
-                        </div>
-                        <p className={`text-xs font-mono ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>{profile.appName}</p>
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => { setEditingProfile(profile); setIsModalOpen(true); }}
-                      className={`p-2 rounded-lg cursor-pointer transition-colors ${isDark ? 'text-gray-400 hover:text-gray-200 hover:bg-[#333]' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-100'}`}
+                {customProfiles.map(profile => {
+                  const profileIconSrc = toDataImageSrc(profile.iconBase64);
+                  return (
+                    <div
+                      key={profile.id}
+                      className={`flex items-center justify-between p-4 rounded-lg border transition-all ${isDark ? 'bg-[#1a1a1a] border-[#333] hover:bg-[#202020]' : 'bg-white border-gray-300 hover:bg-gray-50'}`}
                     >
-                      <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
-                      </svg>
-                    </button>
-                  </div>
-                ))}
+                      <div className="flex items-center gap-4 flex-1">
+                        <div className="w-10 h-10 rounded-lg flex items-center justify-center text-xl overflow-hidden">
+                          {profileIconSrc ? (
+                            <img src={profileIconSrc} alt={profile.displayName} className="w-full h-full object-contain" />
+                          ) : (
+                            '🛠️'
+                          )}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <h4 className={`font-medium ${isDark ? 'text-gray-200' : 'text-gray-800'}`}>{profile.displayName}</h4>
+                            <span className={`text-[10px] px-1.5 py-0.5 rounded uppercase font-medium ${isDark ? 'bg-indigo-500/20 text-indigo-400' : 'bg-indigo-100 text-indigo-700'}`}>Custom</span>
+                          </div>
+                          <p className={`text-xs font-mono ${isDark ? 'text-gray-500' : 'text-gray-500'}`}>{profile.appName}</p>
+                        </div>
+                      </div>
+                      <button
+                        onClick={() => { setEditingProfile(profile); setIsModalOpen(true); }}
+                        className={`p-2 rounded-lg cursor-pointer transition-colors ${isDark ? 'text-gray-400 hover:text-gray-200 hover:bg-[#333]' : 'text-gray-500 hover:text-gray-800 hover:bg-gray-100'}`}
+                      >
+                        <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
+                        </svg>
+                      </button>
+                    </div>
+                  );
+                })}
               </div>
             </div>
           )}

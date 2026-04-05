@@ -1,16 +1,31 @@
-import React, { useState, useEffect } from 'react';
+import React, { Suspense, lazy, startTransition, useState, useEffect, useEffectEvent } from 'react';
 import { TranscriptionSettings } from './settings/TranscriptionSettings';
-import { LLMSettings } from './settings/LLMSettings';
-import { AppProfilesSettings } from './settings/AppProfilesSettings';
-import { PreferencesSettings } from './settings/PreferencesSettings';
-import { LogModeSettings } from './settings/LogModeSettings';
-import { AboutSettings } from './settings/AboutSettings';
-import { AccountSection } from './auth/AccountSection';
 import { OnboardingWizard } from './onboarding/OnboardingWizard';
-import { LegalPrivacySettings } from './settings/LegalPrivacySettings';
 import { useSettings } from '../hooks/useSettings';
 import { useAuth } from '../hooks/useAuth';
 import { getCurrentWindow } from '@tauri-apps/api/window';
+
+const LLMSettings = lazy(async () => ({
+  default: (await import('./settings/LLMSettings')).LLMSettings,
+}));
+const AppProfilesSettings = lazy(async () => ({
+  default: (await import('./settings/AppProfilesSettings')).AppProfilesSettings,
+}));
+const PreferencesSettings = lazy(async () => ({
+  default: (await import('./settings/PreferencesSettings')).PreferencesSettings,
+}));
+const LogModeSettings = lazy(async () => ({
+  default: (await import('./settings/LogModeSettings')).LogModeSettings,
+}));
+const AboutSettings = lazy(async () => ({
+  default: (await import('./settings/AboutSettings')).AboutSettings,
+}));
+const AccountSection = lazy(() => import('./auth/AccountSection'));
+const LegalPrivacySettings = lazy(async () => ({
+  default: (await import('./settings/LegalPrivacySettings')).LegalPrivacySettings,
+}));
+
+const tabPanelFallback = <div className="w-full h-full bg-transparent" />;
 
 type SettingsTab =
   | 'transcription'
@@ -28,6 +43,12 @@ export const SettingsWindow: React.FC = () => {
   const settings = useSettings();
   const auth = useAuth(); // Lift auth state to SettingsWindow level
   const { onboardingComplete, isKeyLoaded, theme } = settings;
+
+  const changeTab = (tab: SettingsTab) => {
+    startTransition(() => {
+      setActiveTab(tab);
+    });
+  };
 
   console.log('[SettingsWindow] Render state:', { onboardingComplete, isKeyLoaded });
 
@@ -88,7 +109,7 @@ export const SettingsWindow: React.FC = () => {
     };
   }, [onboardingComplete]);
 
-  const handleClose = async () => {
+  const handleClose = useEffectEvent(async () => {
     try {
       const window = getCurrentWindow();
       console.log('[SettingsWindow] Closing window');
@@ -96,7 +117,7 @@ export const SettingsWindow: React.FC = () => {
     } catch (error) {
       console.error('[SettingsWindow] Failed to close window:', error);
     }
-  };
+  });
 
   // Handle keyboard shortcuts
   useEffect(() => {
@@ -104,7 +125,7 @@ export const SettingsWindow: React.FC = () => {
       // Ctrl+Shift+L to close (toggle behavior)
       if (e.ctrlKey && e.shiftKey && e.key === 'L') {
         e.preventDefault();
-        handleClose();
+        void handleClose();
       }
     };
 
@@ -171,6 +192,62 @@ export const SettingsWindow: React.FC = () => {
   console.log('[SettingsWindow] Rendering main settings UI');
   const isDark = settings.theme === 'dark';
 
+  const renderActiveTabPanel = () => {
+    switch (activeTab) {
+      case 'transcription':
+        return (
+          <TranscriptionSettings
+            apiKey={settings.apiKey}
+            model={settings.model}
+            saveKey={settings.saveApiKey}
+            saveModel={settings.saveGroqModel}
+            onboardingComplete={settings.onboardingComplete}
+            markOnboardingComplete={settings.markOnboardingComplete}
+            language={settings.language}
+            autoDetectLanguage={settings.autoDetectLanguage}
+            saveLanguage={settings.saveLanguage}
+            saveAutoDetectLanguage={settings.saveAutoDetectLanguage}
+            theme={settings.theme}
+            microphoneId={settings.microphoneId}
+            saveMicrophoneId={settings.saveMicrophoneId}
+          />
+        );
+      case 'llm':
+        return <LLMSettings {...settings} theme={settings.theme} />;
+      case 'profiles':
+        return <AppProfilesSettings theme={settings.theme} />;
+      case 'logmode':
+        return <LogModeSettings isDark={isDark} />;
+      case 'preferences':
+        return (
+          <PreferencesSettings
+            theme={settings.theme}
+            saveTheme={settings.saveTheme}
+            recordingMode={settings.recordingMode}
+            saveRecordingMode={settings.saveRecordingMode}
+          />
+        );
+      case 'account':
+        return (
+          <AccountSection
+            theme={settings.theme}
+            isAuthenticated={auth.isAuthenticated}
+            isLoading={auth.isLoading}
+            user={auth.user}
+            login={auth.login}
+            logout={auth.logout}
+            refreshAuthState={auth.refreshAuthState}
+          />
+        );
+      case 'legal':
+        return <LegalPrivacySettings theme={settings.theme} />;
+      case 'about':
+        return <AboutSettings theme={settings.theme} />;
+      default:
+        return null;
+    }
+  };
+
   return (
     <div
       className={`flex h-screen ${isDark ? 'bg-[#0a0a0a] text-gray-100' : 'bg-white text-gray-800'}`}
@@ -190,7 +267,7 @@ export const SettingsWindow: React.FC = () => {
         {/* Navigation */}
         <nav className="flex-1 p-3 space-y-1">
           <button
-            onClick={() => setActiveTab('transcription')}
+            onClick={() => changeTab('transcription')}
             className={`w-full text-left px-3 py-2.5 rounded-lg text-sm transition-colors flex items-center gap-3 cursor-pointer ${
               activeTab === 'transcription'
                 ? isDark
@@ -213,7 +290,7 @@ export const SettingsWindow: React.FC = () => {
           </button>
 
           <button
-            onClick={() => setActiveTab('llm')}
+            onClick={() => changeTab('llm')}
             className={`w-full text-left px-3 py-2.5 rounded-lg text-sm transition-colors flex items-center gap-3 cursor-pointer ${
               activeTab === 'llm'
                 ? isDark
@@ -236,7 +313,7 @@ export const SettingsWindow: React.FC = () => {
           </button>
 
           <button
-            onClick={() => setActiveTab('profiles')}
+            onClick={() => changeTab('profiles')}
             className={`w-full text-left px-3 py-2.5 rounded-lg text-sm transition-colors flex items-center gap-3 cursor-pointer ${
               activeTab === 'profiles'
                 ? isDark
@@ -259,7 +336,7 @@ export const SettingsWindow: React.FC = () => {
           </button>
 
           <button
-            onClick={() => setActiveTab('logmode')}
+            onClick={() => changeTab('logmode')}
             className={`w-full text-left px-3 py-2.5 rounded-lg text-sm transition-colors flex items-center gap-3 cursor-pointer ${
               activeTab === 'logmode'
                 ? isDark
@@ -282,7 +359,7 @@ export const SettingsWindow: React.FC = () => {
           </button>
 
           <button
-            onClick={() => setActiveTab('preferences')}
+            onClick={() => changeTab('preferences')}
             className={`w-full text-left px-3 py-2.5 rounded-lg text-sm transition-colors flex items-center gap-3 cursor-pointer ${
               activeTab === 'preferences'
                 ? isDark
@@ -305,7 +382,7 @@ export const SettingsWindow: React.FC = () => {
           </button>
 
           <button
-            onClick={() => setActiveTab('account')}
+            onClick={() => changeTab('account')}
             className={`w-full text-left px-3 py-2.5 rounded-lg text-sm transition-colors flex items-center gap-3 cursor-pointer ${
               activeTab === 'account'
                 ? isDark
@@ -328,7 +405,7 @@ export const SettingsWindow: React.FC = () => {
           </button>
 
           <button
-            onClick={() => setActiveTab('legal')}
+            onClick={() => changeTab('legal')}
             className={`w-full text-left px-3 py-2.5 rounded-lg text-sm transition-colors flex items-center gap-3 cursor-pointer ${
               activeTab === 'legal'
                 ? isDark
@@ -351,7 +428,7 @@ export const SettingsWindow: React.FC = () => {
           </button>
 
           <button
-            onClick={() => setActiveTab('about')}
+            onClick={() => changeTab('about')}
             className={`w-full text-left px-3 py-2.5 rounded-lg text-sm transition-colors flex items-center gap-3 cursor-pointer ${
               activeTab === 'about'
                 ? isDark
@@ -377,47 +454,7 @@ export const SettingsWindow: React.FC = () => {
 
       {/* Right Content Area */}
       <div className="flex-1 overflow-y-auto">
-        {activeTab === 'transcription' && (
-          <TranscriptionSettings
-            apiKey={settings.apiKey}
-            model={settings.model}
-            saveKey={settings.saveApiKey}
-            saveModel={settings.saveGroqModel}
-            onboardingComplete={settings.onboardingComplete}
-            markOnboardingComplete={settings.markOnboardingComplete}
-            language={settings.language}
-            autoDetectLanguage={settings.autoDetectLanguage}
-            saveLanguage={settings.saveLanguage}
-            saveAutoDetectLanguage={settings.saveAutoDetectLanguage}
-            theme={settings.theme}
-            microphoneId={settings.microphoneId}
-            saveMicrophoneId={settings.saveMicrophoneId}
-          />
-        )}
-        {activeTab === 'llm' && <LLMSettings {...settings} theme={settings.theme} />}
-        {activeTab === 'profiles' && <AppProfilesSettings theme={settings.theme} />}
-        {activeTab === 'logmode' && <LogModeSettings isDark={isDark} />}
-        {activeTab === 'preferences' && (
-          <PreferencesSettings
-            theme={settings.theme}
-            saveTheme={settings.saveTheme}
-            recordingMode={settings.recordingMode}
-            saveRecordingMode={settings.saveRecordingMode}
-          />
-        )}
-        {activeTab === 'account' && (
-          <AccountSection
-            theme={settings.theme}
-            isAuthenticated={auth.isAuthenticated}
-            isLoading={auth.isLoading}
-            user={auth.user}
-            login={auth.login}
-            logout={auth.logout}
-            refreshAuthState={auth.refreshAuthState}
-          />
-        )}
-        {activeTab === 'legal' && <LegalPrivacySettings theme={settings.theme} />}
-        {activeTab === 'about' && <AboutSettings theme={settings.theme} />}
+        <Suspense fallback={tabPanelFallback}>{renderActiveTabPanel()}</Suspense>
       </div>
     </div>
   );

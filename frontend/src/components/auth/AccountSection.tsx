@@ -1,7 +1,7 @@
 import React, { useCallback, useEffect, useState } from 'react';
 import { UserInfo } from '../../services/authService';
 import { paymentService } from '../../services/paymentService';
-import { open } from '@tauri-apps/plugin-shell';
+import { openExternalUrl } from '../../utils/openExternalUrl';
 
 interface AccountSectionProps {
     theme: 'light' | 'dark';
@@ -29,6 +29,8 @@ export const AccountSection: React.FC<AccountSectionProps> = ({
     const [upgradeSuccess, setUpgradeSuccess] = useState<string | null>(null);
     const [planLabel, setPlanLabel] = useState('Free');
     const [hasActivePro, setHasActivePro] = useState(false);
+    const [profileImageFailed, setProfileImageFailed] = useState(false);
+    const profileImageSrc = (user?.picture || '').trim();
 
     const PRO_VARIANT_ID =
         import.meta.env.VITE_LEMONSQUEEZY_VARIANT_ID_PRO ||
@@ -116,6 +118,10 @@ export const AccountSection: React.FC<AccountSectionProps> = ({
         void refreshPlanState(true);
     }, [refreshPlanState]);
 
+    useEffect(() => {
+        setProfileImageFailed(false);
+    }, [profileImageSrc]);
+
     const pollPlanAfterCheckout = useCallback(async () => {
         for (let attempt = 0; attempt < 12; attempt += 1) {
             await new Promise((resolve) => setTimeout(resolve, 5000));
@@ -145,7 +151,7 @@ export const AccountSection: React.FC<AccountSectionProps> = ({
         try {
             setIsUpgrading(true);
             const checkoutUrl = await paymentService.createCheckout(PRO_VARIANT_ID);
-            await open(checkoutUrl);
+            await openExternalUrl(checkoutUrl);
             setUpgradeSuccess(
                 'Checkout opened in browser. After purchase, click Refresh Plan Status.'
             );
@@ -252,13 +258,15 @@ export const AccountSection: React.FC<AccountSectionProps> = ({
                     <div className={`p-8 relative overflow-hidden ${isDark ? 'bg-gradient-to-r from-transparent to-[#252525]/50' : 'bg-gradient-to-r from-transparent to-gray-50/80'}`}>
                         <div className="relative z-10 flex items-center gap-6">
                             {/* Profile Picture with Ring */}
-                            {user.picture ? (
+                            {profileImageSrc && !profileImageFailed ? (
                                 <div className="relative group">
                                     <div className={`absolute -inset-0.5 rounded-2xl blur opacity-20 group-hover:opacity-40 transition duration-500 ${isDark ? 'bg-emerald-500' : 'bg-emerald-400'}`}></div>
                                     <img
-                                        src={user.picture}
+                                        src={profileImageSrc}
                                         alt={user.name || 'Profile'}
                                         className={`relative w-20 h-20 rounded-2xl object-cover shadow-lg ${isDark ? 'ring-4 ring-[#252525]' : 'ring-4 ring-white'}`}
+                                        referrerPolicy="no-referrer"
+                                        onError={() => setProfileImageFailed(true)}
                                     />
                                     <div className={`absolute -bottom-1 -right-1 w-6 h-6 rounded-full flex items-center justify-center ring-2 ${isDark ? 'bg-emerald-500 ring-[#1a1a1a]' : 'bg-emerald-500 ring-white'}`}>
                                         <svg className="w-3.5 h-3.5 text-white" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth="3">
