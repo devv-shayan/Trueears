@@ -89,8 +89,8 @@ GOOGLE_CLIENT_SECRET=GOCSPX-xxxxx
 
 # JWT
 JWT_SECRET=your-256-bit-secret
-JWT_ACCESS_EXPIRY=900           # 15 minutes
-JWT_REFRESH_EXPIRY=2592000      # 30 days
+JWT_ACCESS_EXPIRY_SECONDS=900   # 15 minutes
+JWT_REFRESH_EXPIRY_SECONDS=2592000 # 30 days
 
 # Server
 API_HOST=0.0.0.0
@@ -123,7 +123,7 @@ This service now includes a Vercel Rust function entrypoint at `api/auth.rs`.
 ### Required project settings in Vercel
 
 - Root Directory: `auth-server`
-- Build Command: `cargo build --release`
+- Build Command: *(leave default/empty so Vercel uses Rust function build pipeline)*
 - Start Command: *(leave empty for Vercel serverless functions)*
 
 `vercel.json` rewrites all incoming paths to `/api/auth`, so routes like:
