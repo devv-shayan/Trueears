@@ -25,7 +25,11 @@
       "Bash(python3 -c \"import sys,re,html; t=sys.stdin.read\\(\\); t=re.sub\\('<[^>]+>',' ',t\\); t=html.unescape\\(t\\); print\\(' '.join\\(t.split\\(\\)\\)[:1500]\\)\")",
       "Bash(curl -s -m 25 -H \"User-Agent: scribe-dev\" \"https://crates.io/api/v1/crates/vercel_runtime/2.2.0/dependencies\")",
       "Bash(python3 -c \"import sys,json; [print\\(x['crate_id'], x['req'], '\\(optional\\)' if x['optional'] else ''\\) for x in json.load\\(sys.stdin\\)['dependencies'] if x['crate_id'] in \\('axum','tokio','tower','axum-streams'\\)]\")",
-      "Bash(docker --version)"
+      "Bash(docker --version)",
+      "Bash(git push *)",
+      "Bash(gh repo *)",
+      "Bash(gh auth *)",
+      "Bash(gh api *)"
     ]
   }
 }
