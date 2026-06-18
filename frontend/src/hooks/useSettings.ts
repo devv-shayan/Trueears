@@ -38,7 +38,7 @@ export const useSettings = () => {
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
 
   // Recording mode state - 'auto' | 'toggle' | 'push-to-talk'
-  const [recordingMode, setRecordingMode] = useState<'auto' | 'toggle' | 'push-to-talk'>('auto');
+  const [recordingMode, setRecordingMode] = useState<'auto' | 'toggle' | 'push-to-talk'>('toggle');
 
   // Microphone state
   const [microphoneId, setMicrophoneId] = useState<string>('default');
@@ -120,12 +120,12 @@ export const useSettings = () => {
     // Load recording mode
     let savedRecordingMode = await tauriAPI.getStoreValue('Trueears_RECORDING_MODE');
     if (savedRecordingMode === null) {
-      savedRecordingMode = 'auto';
+      savedRecordingMode = 'toggle';
       await tauriAPI.setStoreValue('Trueears_RECORDING_MODE', savedRecordingMode);
     }
     const validRecordingMode = (savedRecordingMode === 'auto' || savedRecordingMode === 'toggle' || savedRecordingMode === 'push-to-talk')
       ? savedRecordingMode as 'auto' | 'toggle' | 'push-to-talk'
-      : 'auto';
+      : 'toggle';
     setRecordingMode(validRecordingMode);
 
     // Load microphone ID

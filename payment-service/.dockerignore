@@ -1,0 +1,13 @@
+# Keep the build context small and never ship secrets into the image.
+target/
+.env
+.env.*
+!.env.example
+.git/
+.gitignore
+Dockerfile
+.dockerignore
+tests/
+test-ui.html
+*.md
+run.sh

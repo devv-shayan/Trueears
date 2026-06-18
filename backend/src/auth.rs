@@ -53,11 +53,23 @@ pub struct OAuthConfig {
     pub callback_port: u16,
 }
 
+/// Resolve the auth backend base URL.
+///
+/// Precedence: runtime `API_URL` env var → `API_URL` baked in at build time
+/// (`API_URL=https://api.example.com cargo build`) → hardcoded fallback.
+/// Packaged desktop builds have no env file, so the build-time value is how
+/// production points at the deployed backend (e.g. a container host URL).
+pub fn resolve_api_url() -> String {
+    std::env::var("API_URL")
+        .ok()
+        .or_else(|| option_env!("API_URL").map(|s| s.to_string()))
+        .unwrap_or_else(|| "https://trueears-backend.vercel.app".to_string())
+}
+
 impl OAuthConfig {
     pub fn from_env() -> Option<Self> {
         let google_client_id = std::env::var("GOOGLE_CLIENT_ID").ok()?;
-        let api_url =
-            std::env::var("API_URL").unwrap_or_else(|_| "https://trueears-backend.vercel.app".to_string());
+        let api_url = resolve_api_url();
 
         Some(OAuthConfig {
             google_client_id,
@@ -561,15 +573,26 @@ async fn exchange_code_for_tokens(api_url: &str, code: &str) -> Result<AuthRespo
         .send()
         .await
         .map_err(|e| {
-            log::error!("HTTP request failed: {}", e);
-            format!("Request failed: {}", e)
+            log::error!("HTTP request to {}/auth/google failed: {}", api_url, e);
+            // Network-level failure (DNS, TLS, connection refused, timeout).
+            // Don't leak the raw reqwest error to the onboarding UI.
+            "Couldn't reach the authentication server. Check your internet connection and try again."
+                .to_string()
         })?;
 
-    log::info!("Response status: {}", response.status());
+    let status = response.status();
+    log::info!("Response status: {}", status);
 
-    if !response.status().is_success() {
+    if !status.is_success() {
         let error_text = response.text().await.unwrap_or_default();
-        log::error!("Auth failed: {}", error_text);
+        log::error!("Auth failed ({}): {}", status, error_text);
+        // A 5xx means our backend is down/misconfigured, not a user error.
+        if status.is_server_error() {
+            return Err(
+                "The authentication server is temporarily unavailable. Please try again in a few minutes."
+                    .to_string(),
+            );
+        }
         return Err(format!("Authentication failed: {}", error_text));
     }
 

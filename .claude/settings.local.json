@@ -7,7 +7,25 @@
       "Bash(.specify/scripts/bash/update-agent-context.sh:*)",
       "Bash(.specify/scripts/bash/check-prerequisites.sh:*)",
       "Bash(.specify/scripts/bash/create-phr.sh:*)",
-      "Skill(sp.implement)"
+      "Skill(sp.implement)",
+      "Bash(cat frontend/.env.example)",
+      "Bash(cat frontend/.env)",
+      "Bash(cat .env.example)",
+      "Bash(grep -oE \"^[A-Z_]+=\" .env)",
+      "mcp__context7__query-docs",
+      "Bash(curl -s -m 20 https://crates.io/api/v1/crates/vercel_runtime)",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\('max_stable:', d['crate'].get\\('max_stable_version'\\), '| newest:', d['crate'].get\\('newest_version'\\)\\)\")",
+      "Bash(curl -s -m 20 -H \"User-Agent: scribe-dev\" \"https://crates.io/api/v1/crates/vercel_runtime/versions\")",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); [print\\(v['num']\\) for v in d['versions'][:8]]\")",
+      "Bash(curl -s -m 20 -H \"User-Agent: scribe-dev\" \"https://crates.io/api/v1/crates/vercel_runtime\")",
+      "Bash(python3 -c \"import sys,json; d=json.load\\(sys.stdin\\); print\\('newest:', d['crate']['newest_version'], '| max_stable:', d['crate'].get\\('max_stable_version'\\)\\)\")",
+      "Bash(rustc --version)",
+      "Bash(cargo --version)",
+      "Bash(curl -s -m 25 -H \"User-Agent: scribe-dev\" \"https://docs.rs/vercel_runtime/2.2.0/vercel_runtime/axum/index.html\")",
+      "Bash(python3 -c \"import sys,re,html; t=sys.stdin.read\\(\\); t=re.sub\\('<[^>]+>',' ',t\\); t=html.unescape\\(t\\); print\\(' '.join\\(t.split\\(\\)\\)[:1500]\\)\")",
+      "Bash(curl -s -m 25 -H \"User-Agent: scribe-dev\" \"https://crates.io/api/v1/crates/vercel_runtime/2.2.0/dependencies\")",
+      "Bash(python3 -c \"import sys,json; [print\\(x['crate_id'], x['req'], '\\(optional\\)' if x['optional'] else ''\\) for x in json.load\\(sys.stdin\\)['dependencies'] if x['crate_id'] in \\('axum','tokio','tower','axum-streams'\\)]\")",
+      "Bash(docker --version)"
     ]
   }
 }

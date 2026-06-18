@@ -51,6 +51,36 @@ class PaymentService {
     // Default to localhost for development
     // In production, this should be configured via environment variables
     this.baseUrl = import.meta.env.VITE_PAYMENT_SERVICE_URL || 'http://localhost:3002';
+
+    // A production build that still points at localhost will fail every request
+    // with an opaque "Failed to fetch". Make that misconfiguration loud and obvious.
+    if (import.meta.env.PROD && /localhost|127\.0\.0\.1/.test(this.baseUrl)) {
+      console.error(
+        `[PaymentService] Misconfigured: payment service URL is "${this.baseUrl}" in a ` +
+          `production build. Set VITE_PAYMENT_SERVICE_URL to the deployed payment service ` +
+          `before building, otherwise all license/account requests will fail.`
+      );
+    }
+  }
+
+  /**
+   * Wrapper around fetch that turns opaque network failures (the browser's
+   * "TypeError: Failed to fetch") into an actionable error that names the URL
+   * we tried to reach. This is the difference between a user seeing
+   * "Failed to fetch" and "Couldn't reach the payment service at <url>".
+   */
+  private async safeFetch(path: string, init?: RequestInit): Promise<Response> {
+    try {
+      return await fetch(`${this.baseUrl}${path}`, init);
+    } catch (err) {
+      // fetch only rejects on network-level failures (DNS, connection refused,
+      // CORS, offline) — never on HTTP status codes.
+      throw new Error(
+        `Couldn't reach the payment service at ${this.baseUrl}. ` +
+          `Check your connection and that VITE_PAYMENT_SERVICE_URL is configured. ` +
+          `(${err instanceof Error ? err.message : String(err)})`
+      );
+    }
   }
 
   /**
@@ -89,7 +119,7 @@ class PaymentService {
    */
   async createCheckout(variantId: string): Promise<string> {
     try {
-      const response = await fetch(`${this.baseUrl}/api/checkout`, {
+      const response = await this.safeFetch(`/api/checkout`, {
         method: 'POST',
         headers: this.getHeaders(),
         body: JSON.stringify({ variant_id: variantId }),
@@ -123,7 +153,7 @@ class PaymentService {
    */
   async checkLicenseStatus(): Promise<LicenseStatus> {
     try {
-      const response = await fetch(`${this.baseUrl}/api/license/status`, {
+      const response = await this.safeFetch(`/api/license/status`, {
         method: 'GET',
         headers: this.getHeaders(),
       });
@@ -155,7 +185,7 @@ class PaymentService {
    */
   async getOrders(): Promise<OrderResponse[]> {
     try {
-      const response = await fetch(`${this.baseUrl}/api/orders/me`, {
+      const response = await this.safeFetch(`/api/orders/me`, {
         method: 'GET',
         headers: this.getHeaders(),
       });
@@ -183,7 +213,7 @@ class PaymentService {
     deviceName?: string
   ): Promise<ActivateLicenseResponse> {
     try {
-      const response = await fetch(`${this.baseUrl}/api/license/activate`, {
+      const response = await this.safeFetch(`/api/license/activate`, {
         method: 'POST',
         headers: this.getHeaders(),
         body: JSON.stringify({
@@ -210,7 +240,7 @@ class PaymentService {
    */
   async deactivateLicense(): Promise<{ success: boolean }> {
     try {
-      const response = await fetch(`${this.baseUrl}/api/license/deactivate`, {
+      const response = await this.safeFetch(`/api/license/deactivate`, {
         method: 'POST',
         headers: this.getHeaders(),
         body: JSON.stringify({}),
@@ -234,7 +264,7 @@ class PaymentService {
    */
   async healthCheck(): Promise<boolean> {
     try {
-      const response = await fetch(`${this.baseUrl}/health`, {
+      const response = await this.safeFetch(`/health`, {
         method: 'GET',
       });
       return response.ok;
